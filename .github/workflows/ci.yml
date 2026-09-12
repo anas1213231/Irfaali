@@ -35,7 +35,7 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devicetypes | head -80
 
-      - name: Create CI simulator
+      - name: Create and boot CI simulator
         shell: bash
         run: |
           set -euo pipefail
@@ -67,6 +67,8 @@ jobs:
           UDID=$(xcrun simctl create "Irfaali CI" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
           echo "Created simulator: $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
           xcrun simctl list devices "$RUNTIME_ID"
 
       - name: Build for simulator
