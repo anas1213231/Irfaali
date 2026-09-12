@@ -26,6 +26,8 @@ final class VideoEnhancementService {
         preferHEVC: Bool,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
+        try Task.checkCancellation()
+
         let normalized = settings.normalized()
         guard normalized.isEnabled else {
             progress(1)
@@ -110,21 +112,26 @@ final class VideoEnhancementService {
         defer { monitor.cancel() }
 
         do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                session.exportAsynchronously {
-                    switch session.status {
-                    case .completed:
-                        progress(1)
-                        continuation.resume()
-                    case .failed:
-                        continuation.resume(throwing: EnhancementError.failed(session.error?.localizedDescription ?? "Unknown error"))
-                    case .cancelled:
-                        continuation.resume(throwing: CancellationError())
-                    default:
-                        continuation.resume(throwing: EnhancementError.failed("Unexpected export state: \(session.status.rawValue)"))
+            try await withTaskCancellationHandler(operation: {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    session.exportAsynchronously {
+                        switch session.status {
+                        case .completed:
+                            progress(1)
+                            continuation.resume()
+                        case .failed:
+                            continuation.resume(throwing: EnhancementError.failed(session.error?.localizedDescription ?? "Unknown error"))
+                        case .cancelled:
+                            continuation.resume(throwing: CancellationError())
+                        default:
+                            continuation.resume(throwing: EnhancementError.failed("Unexpected export state: \(session.status.rawValue)"))
+                        }
                     }
                 }
-            }
+            }, onCancel: {
+                session.cancelExport()
+            })
+            try Task.checkCancellation()
         } catch {
             try? FileManager.default.removeItem(at: destination)
             throw error
