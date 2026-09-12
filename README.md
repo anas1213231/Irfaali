@@ -17,6 +17,7 @@ Production-oriented iPhone video analysis and export engine built with SwiftUI, 
 
 ```bash
 brew install xcodegen
+bash scripts/prepare_app_icon.sh
 xcodegen generate
 open Irfaali.xcodeproj
 ```
