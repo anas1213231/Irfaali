@@ -1,0 +1,223 @@
+name: Re-signable IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["release/resignable"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-package:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Prepare app icon
+        run: bash scripts/prepare_app_icon.sh
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Irfaali.xcodeproj \
+            -scheme Irfaali \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
+      - name: Build Release for iPhone device without signing
+        run: |
+          set -euo pipefail
+          rm -rf build
+          xcodebuild \
+            -project Irfaali.xcodeproj \
+            -scheme Irfaali \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/build/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            clean build
+
+      - name: Prepare re-signable app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$PWD/build/DerivedData/Build/Products/Release-iphoneos/Irfaali.app"
+          test -d "$APP"
+
+          # Remove only signing artifacts. Keep app code, frameworks, plug-ins and Swift libraries intact.
+          find "$APP" -type d -name _CodeSignature -prune -exec rm -rf {} +
+          find "$APP" -type f -name embedded.mobileprovision -delete
+
+          mkdir -p package/Payload
+          cp -R "$APP" package/Payload/Irfaali.app
+
+      - name: Audit entitlements and bundle structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$PWD/package/Payload/Irfaali.app"
+          INFO="$APP/Info.plist"
+          EXE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO")
+          EXE="$APP/$EXE_NAME"
+
+          echo "=== Info.plist ==="
+          echo "CFBundleIdentifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO")"
+          echo "CFBundleShortVersionString=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO")"
+          echo "CFBundleVersion=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO")"
+          echo "CFBundleExecutable=$EXE_NAME"
+          echo "MinimumOSVersion=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$INFO")"
+          echo "DTPlatformName=$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$INFO")"
+          echo "Architectures=$(lipo -archs "$EXE")"
+
+          echo "=== Declared app entitlements ==="
+          ENTITLEMENTS=$(find . -maxdepth 4 -type f -name '*.entitlements' -print)
+          if [ -z "$ENTITLEMENTS" ]; then
+            echo "NONE"
+          else
+            echo "$ENTITLEMENTS"
+            for f in $ENTITLEMENTS; do plutil -p "$f"; done
+          fi
+
+          echo "=== Extensions ==="
+          APPEX=$(find "$APP/PlugIns" -maxdepth 1 -type d -name '*.appex' -print 2>/dev/null || true)
+          if [ -z "$APPEX" ]; then echo "NONE"; else echo "$APPEX"; fi
+
+          echo "=== Frameworks / dylibs ==="
+          CODE_ITEMS=$(find "$APP/Frameworks" -maxdepth 1 \( -type d -name '*.framework' -o -type f -name '*.dylib' \) -print 2>/dev/null || true)
+          if [ -z "$CODE_ITEMS" ]; then echo "NONE"; else echo "$CODE_ITEMS"; fi
+
+          if grep -R "CODE_SIGN_ENTITLEMENTS" Irfaali.xcodeproj/project.pbxproj | grep -v 'CODE_SIGN_ENTITLEMENTS = ""' >/dev/null 2>&1; then
+            echo "Unexpected CODE_SIGN_ENTITLEMENTS setting found"
+            grep -R "CODE_SIGN_ENTITLEMENTS" Irfaali.xcodeproj/project.pbxproj
+            exit 1
+          fi
+
+          # These sensitive/profile-derived entitlements must not be hard-coded for the app.
+          for key in application-identifier keychain-access-groups get-task-allow aps-environment com.apple.developer.associated-domains com.apple.developer.icloud-services com.apple.security.application-groups; do
+            if grep -R --exclude-dir=.git --exclude='*.yml' --exclude='*.yaml' -F "$key" Irfaali Irfaali.xcodeproj >/dev/null 2>&1; then
+              echo "Unexpected hard-coded entitlement key: $key"
+              exit 1
+            fi
+          done
+
+      - name: Create IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd package
+          /usr/bin/zip -qry ../Irfaali-1.0.0-resignable.ipa Payload
+          cd ..
+          test -s Irfaali-1.0.0-resignable.ipa
+
+      - name: Validate IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA="$PWD/Irfaali-1.0.0-resignable.ipa"
+          VALIDATE="$PWD/validation"
+          rm -rf "$VALIDATE"
+          mkdir -p "$VALIDATE"
+
+          unzip -t "$IPA"
+          unzip -q "$IPA" -d "$VALIDATE"
+
+          APP="$VALIDATE/Payload/Irfaali.app"
+          INFO="$APP/Info.plist"
+          test -d "$VALIDATE/Payload"
+          test -d "$APP"
+          test -f "$INFO"
+
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO")
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO")
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO")
+          EXE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO")
+          MIN_OS=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$INFO")
+          PLATFORM=$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$INFO")
+          EXE="$APP/$EXE_NAME"
+
+          test -n "$BUNDLE_ID"
+          test "$VERSION" = "1.0.0"
+          test -n "$BUILD"
+          test -n "$MIN_OS"
+          test "$PLATFORM" = "iphoneos"
+          test -x "$EXE"
+
+          ARCHS=$(lipo -archs "$EXE")
+          echo "$ARCHS" | tr ' ' '\n' | grep -qx arm64
+          if echo "$ARCHS" | tr ' ' '\n' | grep -Eq '^(x86_64|i386)$'; then
+            echo "Simulator architecture found in device executable: $ARCHS"
+            exit 1
+          fi
+
+          # Re-signable package must not contain a stale signature/profile.
+          if find "$APP" -type d -name _CodeSignature -print -quit | grep -q .; then
+            echo "Unexpected code signature found"
+            exit 1
+          fi
+          if find "$APP" -type f -name embedded.mobileprovision -print -quit | grep -q .; then
+            echo "Unexpected embedded provisioning profile found"
+            exit 1
+          fi
+
+          # Do not ship tests, dSYMs, temporary files or credential/profile files in the IPA.
+          if find "$VALIDATE/Payload" \( -name '*.xctest' -o -name '*.dSYM' -o -name '*.p12' -o -name '*.pfx' -o -name '*.mobileprovision' -o -name '*.key' \) -print -quit | grep -q .; then
+            echo "Development, credential, or provisioning junk found in IPA"
+            exit 1
+          fi
+
+          echo "Bundle Identifier: $BUNDLE_ID"
+          echo "Version: $VERSION"
+          echo "Build Number: $BUILD"
+          echo "Executable: $EXE_NAME"
+          echo "MinimumOSVersion: $MIN_OS"
+          echo "Platform: $PLATFORM"
+          echo "Architecture: $ARCHS"
+          echo "IPA Size: $(stat -f%z "$IPA") bytes"
+
+      - name: Upload re-signable IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Irfaali-1.0.0-resignable
+          path: Irfaali-1.0.0-resignable.ipa
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v1.0.0-resignable"
+          TITLE="v1.0.0-resignable"
+          NOTES="Re-signable IPA for manual signing with a compatible Apple certificate and provisioning profile."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" Irfaali-1.0.0-resignable.ipa --clobber
+          else
+            gh release create "$TAG" Irfaali-1.0.0-resignable.ipa --title "$TITLE" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi
+
+      - name: Verify published release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.0-resignable --json url,tagName,assets
+          gh release view v1.0.0-resignable --json assets --jq '.assets[].name' | grep -qx 'Irfaali-1.0.0-resignable.ipa'
