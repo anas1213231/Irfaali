@@ -50,10 +50,19 @@ final class VideoExportService {
         settings: VideoProcessingSettings,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExportOutcome {
+        try Task.checkCancellation()
+
         if settings.isPassThrough(for: info) {
             let destination = try uniqueDestination(extension: info.url.pathExtension.isEmpty ? "mp4" : info.url.pathExtension)
-            try FileManager.default.copyItem(at: info.url, to: destination)
-            progress(1)
+            do {
+                try FileManager.default.copyItem(at: info.url, to: destination)
+                try Task.checkCancellation()
+                progress(1)
+            } catch {
+                try? FileManager.default.removeItem(at: destination)
+                throw error
+            }
+
             return ExportOutcome(
                 url: destination,
                 sourceFPS: info.sourceFPS,
@@ -89,6 +98,8 @@ final class VideoExportService {
             videoComposition = nil
         }
 
+        try Task.checkCancellation()
+
         let exportPreset = presetName(settings: settings, info: info, targetSize: targetSize)
         guard let session = AVAssetExportSession(asset: exportAsset, presetName: exportPreset) else {
             throw ExportError.cannotCreateSession
@@ -115,20 +126,30 @@ final class VideoExportService {
 
         defer { monitor.cancel() }
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            session.exportAsynchronously {
-                switch session.status {
-                case .completed:
-                    progress(1)
-                    continuation.resume()
-                case .failed:
-                    continuation.resume(throwing: ExportError.failed(session.error?.localizedDescription ?? "Unknown error"))
-                case .cancelled:
-                    continuation.resume(throwing: CancellationError())
-                default:
-                    continuation.resume(throwing: ExportError.failed("Unexpected export state: \(session.status.rawValue)"))
+        do {
+            try await withTaskCancellationHandler(operation: {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    session.exportAsynchronously {
+                        switch session.status {
+                        case .completed:
+                            progress(1)
+                            continuation.resume()
+                        case .failed:
+                            continuation.resume(throwing: ExportError.failed(session.error?.localizedDescription ?? "Unknown error"))
+                        case .cancelled:
+                            continuation.resume(throwing: CancellationError())
+                        default:
+                            continuation.resume(throwing: ExportError.failed("Unexpected export state: \(session.status.rawValue)"))
+                        }
+                    }
                 }
-            }
+            }, onCancel: {
+                session.cancelExport()
+            })
+            try Task.checkCancellation()
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
         }
 
         let fpsMode: FPSGenerationMode = outputFPS < info.sourceFPS - 0.5 ? .retimed : .preserved
@@ -166,6 +187,8 @@ final class VideoExportService {
         targetSize: CGSize,
         outputFPS: Double
     ) async throws -> (asset: AVMutableComposition, videoComposition: AVMutableVideoComposition) {
+        try Task.checkCancellation()
+
         let duration = try await sourceAsset.load(.duration)
         let sourceVideoTracks = try await sourceAsset.loadTracks(withMediaType: .video)
         guard let sourceVideoTrack = sourceVideoTracks.first else {
@@ -188,6 +211,7 @@ final class VideoExportService {
 
         let sourceAudioTracks = try await sourceAsset.loadTracks(withMediaType: .audio)
         for sourceAudioTrack in sourceAudioTracks {
+            try Task.checkCancellation()
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
@@ -232,6 +256,7 @@ final class VideoExportService {
         videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(safeFPS.rounded()))
         videoComposition.instructions = [instruction]
 
+        try Task.checkCancellation()
         return (composition, videoComposition)
     }
 
