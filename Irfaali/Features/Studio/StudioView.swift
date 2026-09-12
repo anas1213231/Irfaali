@@ -297,6 +297,8 @@ struct StudioView: View {
                     }
                     .buttonStyle(PremiumSecondaryButtonStyle())
                     .accessibilityLabel(preferences.text(ar: "اختيار ذكي", en: "Smart Setup"))
+                    .disabled(model.isProcessing)
+                    .opacity(model.isProcessing ? 0.45 : 1)
                 }
 
                 settingsDivider
@@ -308,7 +310,7 @@ struct StudioView: View {
                         settingChoice(
                             title: resolution.title(isArabic: preferences.isArabic),
                             selected: model.settings.resolution == resolution,
-                            enabled: true
+                            enabled: !model.isProcessing
                         ) {
                             model.settings.resolution = resolution
                         }
@@ -324,7 +326,7 @@ struct StudioView: View {
                         settingChoice(
                             title: frameRate.title(isArabic: preferences.isArabic),
                             selected: model.settings.frameRate == frameRate,
-                            enabled: true,
+                            enabled: !model.isProcessing,
                             badge: needsAI ? "AI 2×" : nil
                         ) {
                             model.settings.frameRate = frameRate
@@ -343,7 +345,7 @@ struct StudioView: View {
                         settingChoice(
                             title: codec.title(isArabic: preferences.isArabic),
                             selected: model.settings.codec == codec,
-                            enabled: true
+                            enabled: !model.isProcessing
                         ) {
                             model.settings.codec = codec
                         }
@@ -359,7 +361,7 @@ struct StudioView: View {
                         settingChoice(
                             title: mode.title(isArabic: preferences.isArabic),
                             selected: model.enhancement.mode == mode,
-                            enabled: true,
+                            enabled: !model.isProcessing,
                             badge: mode == .smart ? "AUTO" : nil
                         ) {
                             model.applyEnhancementMode(mode)
@@ -519,6 +521,7 @@ struct StudioView: View {
                 in: 0...1
             )
             .tint(IrfaaliTheme.accent)
+            .disabled(model.isProcessing)
         }
     }
 
@@ -704,9 +707,38 @@ struct StudioView: View {
                 .foregroundStyle(IrfaaliTheme.accent)
             }
 
+            if model.sceneCutFallbackFrameCount > 0 {
+                Label(
+                    preferences.text(
+                        ar: "حمينا \(model.sceneCutFallbackFrameCount) فريم عند قصّات المشاهد",
+                        en: "\(model.sceneCutFallbackFrameCount) scene-cut cadence frames protected"
+                    ),
+                    systemImage: "scissors"
+                )
+                .font(.caption.bold())
+                .foregroundStyle(.orange)
+            }
+
             Text(preferences.text(ar: "ما نعتمد النتيجة لين نحلل الملف النهائي ونتأكد منه.", en: "The result is not accepted until the final file is analyzed and verified."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if model.canCancelProcessing {
+                Button {
+                    model.cancelProcessing()
+                } label: {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                        Text(preferences.text(ar: "وقف العملية", en: "Cancel Processing"))
+                        Spacer()
+                        Text(preferences.text(ar: "بننظف الملفات الناقصة", en: "Partial files are cleaned"))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(PremiumDestructiveButtonStyle())
+            }
         }
         .padding(14)
         .background(IrfaaliTheme.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -988,5 +1020,27 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
             }
             .foregroundStyle(.primary)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.975 : 1)
+    }
+}
+
+private struct PremiumDestructiveButtonStyle: ButtonStyle {
+    @EnvironmentObject private var preferences: AppPreferences
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.bold())
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .background(
+                Color.red.opacity(configuration.isPressed ? 0.16 : 0.085),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.red.opacity(configuration.isPressed ? 0.42 : 0.24), lineWidth: 1)
+            }
+            .foregroundStyle(.red)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.975 : 1)
+            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.15 : 0), value: configuration.isPressed)
     }
 }
