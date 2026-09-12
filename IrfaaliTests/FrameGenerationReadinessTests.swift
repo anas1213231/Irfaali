@@ -109,4 +109,14 @@ final class FrameGenerationReadinessTests: XCTestCase {
         XCTAssertEqual(readiness.level, .blocked)
         XCTAssertEqual(readiness.reasons, [.unsupportedPlan])
     }
+
+    #if targetEnvironment(simulator)
+    func testCurrentEnvironmentIsSafeAndExplicitOnSimulator() {
+        let environment = FrameGenerationReadiness.Environment.current()
+
+        XCTAssertTrue(environment.isSimulator)
+        XCTAssertFalse(environment.lowPowerModeEnabled)
+        XCTAssertEqual(environment.thermalLevel, .nominal)
+    }
+    #endif
 }
