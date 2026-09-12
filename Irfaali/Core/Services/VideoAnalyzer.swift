@@ -30,7 +30,7 @@ struct VideoAnalyzer: Sendable {
         let naturalSize = try await naturalSizeValue
         let transform = try await transformValue
         let fps = Double(try await fpsValue)
-        let dataRate = try await dataRateValue
+        let dataRate = Double(try await dataRateValue)
         let descriptions = try await descriptionsValue
         let timeScale = try await timeScaleValue
 
