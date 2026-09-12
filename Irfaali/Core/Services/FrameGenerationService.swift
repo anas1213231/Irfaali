@@ -75,7 +75,7 @@ final class FrameGenerationService {
             throw GenerationError.unsupportedPlan
         }
 
-        return try await Task.detached(priority: .userInitiated) {
+        let worker = Task.detached(priority: .userInitiated) {
             try await Self.performGeneration(
                 sourceURL: sourceURL,
                 plan: plan,
@@ -83,7 +83,13 @@ final class FrameGenerationService {
                 preferHEVC: preferHEVC,
                 progress: progress
             )
-        }.value
+        }
+
+        return try await withTaskCancellationHandler(operation: {
+            try await worker.value
+        }, onCancel: {
+            worker.cancel()
+        })
     }
 
     private static func performGeneration(
@@ -93,6 +99,8 @@ final class FrameGenerationService {
         preferHEVC: Bool,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> Result {
+        try Task.checkCancellation()
+
         let sourceAsset = AVURLAsset(url: sourceURL)
         let tracks = try await sourceAsset.loadTracks(withMediaType: .video)
         guard let videoTrack = tracks.first else {
@@ -115,106 +123,186 @@ final class FrameGenerationService {
         try? FileManager.default.removeItem(at: silentURL)
         try? FileManager.default.removeItem(at: finalURL)
 
-        let reader: AVAssetReader
+        var activeReader: AVAssetReader?
+        var activeWriter: AVAssetWriter?
+
         do {
-            reader = try AVAssetReader(asset: sourceAsset)
-        } catch {
-            throw GenerationError.cannotCreateReader
-        }
+            let reader: AVAssetReader
+            do {
+                reader = try AVAssetReader(asset: sourceAsset)
+            } catch {
+                throw GenerationError.cannotCreateReader
+            }
+            activeReader = reader
 
-        let readerOutput = AVAssetReaderTrackOutput(
-            track: videoTrack,
-            outputSettings: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-            ]
-        )
-        readerOutput.alwaysCopiesSampleData = false
-        guard reader.canAdd(readerOutput) else {
-            throw GenerationError.cannotAddReaderOutput
-        }
-        reader.add(readerOutput)
-
-        let writer: AVAssetWriter
-        do {
-            writer = try AVAssetWriter(outputURL: silentURL, fileType: .mp4)
-        } catch {
-            throw GenerationError.cannotCreateWriter
-        }
-
-        let requestedBitrate = Int(
-            min(
-                max(estimatedBitrate.isFinite ? estimatedBitrate * 1.35 : 8_000_000, 2_000_000),
-                160_000_000
-            )
-        )
-
-        let codec: AVVideoCodecType = preferHEVC ? .hevc : .h264
-        let writerInput = AVAssetWriterInput(
-            mediaType: .video,
-            outputSettings: [
-                AVVideoCodecKey: codec,
-                AVVideoWidthKey: width,
-                AVVideoHeightKey: height,
-                AVVideoCompressionPropertiesKey: [
-                    AVVideoAverageBitRateKey: requestedBitrate,
-                    AVVideoExpectedSourceFrameRateKey: Int(plan.targetFPS.rounded()),
-                    AVVideoMaxKeyFrameIntervalKey: max(1, Int(plan.targetFPS.rounded() * 2))
+            let readerOutput = AVAssetReaderTrackOutput(
+                track: videoTrack,
+                outputSettings: [
+                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
                 ]
-            ]
-        )
-        writerInput.expectsMediaDataInRealTime = false
-        writerInput.transform = preferredTransform
+            )
+            readerOutput.alwaysCopiesSampleData = false
+            guard reader.canAdd(readerOutput) else {
+                throw GenerationError.cannotAddReaderOutput
+            }
+            reader.add(readerOutput)
 
-        guard writer.canAdd(writerInput) else {
-            throw GenerationError.cannotAddWriterInput
-        }
-        writer.add(writerInput)
+            let writer: AVAssetWriter
+            do {
+                writer = try AVAssetWriter(outputURL: silentURL, fileType: .mp4)
+            } catch {
+                throw GenerationError.cannotCreateWriter
+            }
+            activeWriter = writer
 
-        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput: writerInput,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferWidthKey as String: width,
-                kCVPixelBufferHeightKey as String: height,
-                kCVPixelBufferMetalCompatibilityKey as String: true
-            ]
-        )
+            let requestedBitrate = Int(
+                min(
+                    max(estimatedBitrate.isFinite ? estimatedBitrate * 1.35 : 8_000_000, 2_000_000),
+                    160_000_000
+                )
+            )
 
-        guard writer.startWriting() else {
-            throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "startWriting failed")
-        }
-        writer.startSession(atSourceTime: .zero)
+            let codec: AVVideoCodecType = preferHEVC ? .hevc : .h264
+            let writerInput = AVAssetWriterInput(
+                mediaType: .video,
+                outputSettings: [
+                    AVVideoCodecKey: codec,
+                    AVVideoWidthKey: width,
+                    AVVideoHeightKey: height,
+                    AVVideoCompressionPropertiesKey: [
+                        AVVideoAverageBitRateKey: requestedBitrate,
+                        AVVideoExpectedSourceFrameRateKey: Int(plan.targetFPS.rounded()),
+                        AVVideoMaxKeyFrameIntervalKey: max(1, Int(plan.targetFPS.rounded() * 2))
+                    ]
+                ]
+            )
+            writerInput.expectsMediaDataInRealTime = false
+            writerInput.transform = preferredTransform
 
-        guard reader.startReading() else {
-            writer.cancelWriting()
-            throw GenerationError.readerFailed(reader.error?.localizedDescription ?? "startReading failed")
-        }
+            guard writer.canAdd(writerInput) else {
+                throw GenerationError.cannotAddWriterInput
+            }
+            writer.add(writerInput)
 
-        let opticalFlow = OpticalFlowService()
-        let synthesizer = try MotionWarpFrameSynthesizer()
-        let cutDetector = SceneCutDetector()
+            let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+                assetWriterInput: writerInput,
+                sourcePixelBufferAttributes: [
+                    kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                    kCVPixelBufferWidthKey as String: width,
+                    kCVPixelBufferHeightKey as String: height,
+                    kCVPixelBufferMetalCompatibilityKey as String: true
+                ]
+            )
 
-        var previousBuffer: CVPixelBuffer?
-        var previousPTS: CMTime?
-        var originPTS: CMTime?
-        var sourceFrameCount = 0
-        var generatedFrameCount = 0
-        var sceneCutFallbackFrameCount = 0
+            guard writer.startWriting() else {
+                throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "startWriting failed")
+            }
+            writer.startSession(atSourceTime: .zero)
 
-        while let sample = readerOutput.copyNextSampleBuffer() {
+            guard reader.startReading() else {
+                writer.cancelWriting()
+                throw GenerationError.readerFailed(reader.error?.localizedDescription ?? "startReading failed")
+            }
+
+            let opticalFlow = OpticalFlowService()
+            let synthesizer = try MotionWarpFrameSynthesizer()
+            let cutDetector = SceneCutDetector()
+
+            var previousBuffer: CVPixelBuffer?
+            var previousPTS: CMTime?
+            var originPTS: CMTime?
+            var sourceFrameCount = 0
+            var generatedFrameCount = 0
+            var sceneCutFallbackFrameCount = 0
+
+            while let sample = readerOutput.copyNextSampleBuffer() {
+                try Task.checkCancellation()
+
+                guard let currentBuffer = CMSampleBufferGetImageBuffer(sample) else {
+                    reader.cancelReading()
+                    writer.cancelWriting()
+                    throw GenerationError.missingImageBuffer
+                }
+
+                let currentPTS = CMSampleBufferGetPresentationTimeStamp(sample)
+                if originPTS == nil {
+                    originPTS = currentPTS
+                }
+                sourceFrameCount += 1
+
+                if let previousBuffer, let previousPTS, let originPTS {
+                    try append(
+                        previousBuffer,
+                        at: CMTimeSubtract(previousPTS, originPTS),
+                        adaptor: adaptor,
+                        writerInput: writerInput,
+                        writer: writer
+                    )
+
+                    let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
+                    let fractions = plan.intermediateFractions()
+                    let gap = CMTimeSubtract(currentPTS, previousPTS)
+
+                    if cut.isCut {
+                        // A hard edit has no physically meaningful optical-flow path.
+                        // Keep the previous shot until the real cut timestamp, and count
+                        // the inserted cadence sample separately from synthesized frames.
+                        for fraction in fractions {
+                            try Task.checkCancellation()
+                            let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
+                            let fallbackPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
+                            try append(
+                                previousBuffer,
+                                at: fallbackPTS,
+                                adaptor: adaptor,
+                                writerInput: writerInput,
+                                writer: writer
+                            )
+                            sceneCutFallbackFrameCount += 1
+                        }
+                    } else {
+                        let forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
+                        try Task.checkCancellation()
+                        let backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
+
+                        for fraction in fractions {
+                            try Task.checkCancellation()
+                            let generated = try synthesizer.synthesize(
+                                source: previousBuffer,
+                                target: currentBuffer,
+                                forwardFlow: forward,
+                                backwardFlow: backward,
+                                fraction: fraction
+                            )
+
+                            let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
+                            let generatedPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
+                            try append(
+                                generated,
+                                at: generatedPTS,
+                                adaptor: adaptor,
+                                writerInput: writerInput,
+                                writer: writer
+                            )
+                            generatedFrameCount += 1
+                        }
+                    }
+
+                    let adjustedCurrent = CMTimeSubtract(currentPTS, originPTS)
+                    let seconds = max(0, CMTimeGetSeconds(adjustedCurrent))
+                    progress(min(max((seconds / durationSeconds) * 0.88, 0), 0.88))
+                }
+
+                previousBuffer = currentBuffer
+                previousPTS = currentPTS
+            }
+
             try Task.checkCancellation()
 
-            guard let currentBuffer = CMSampleBufferGetImageBuffer(sample) else {
-                reader.cancelReading()
+            if reader.status == .failed {
                 writer.cancelWriting()
-                throw GenerationError.missingImageBuffer
+                throw GenerationError.readerFailed(reader.error?.localizedDescription ?? "Unknown reader failure")
             }
-
-            let currentPTS = CMSampleBufferGetPresentationTimeStamp(sample)
-            if originPTS == nil {
-                originPTS = currentPTS
-            }
-            sourceFrameCount += 1
 
             if let previousBuffer, let previousPTS, let originPTS {
                 try append(
@@ -224,98 +312,39 @@ final class FrameGenerationService {
                     writerInput: writerInput,
                     writer: writer
                 )
-
-                let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
-                let fractions = plan.intermediateFractions()
-                let gap = CMTimeSubtract(currentPTS, previousPTS)
-
-                if cut.isCut {
-                    // A hard edit has no physically meaningful optical-flow path.
-                    // Keep the previous shot until the real cut timestamp, and count
-                    // the inserted cadence sample separately from synthesized frames.
-                    for fraction in fractions {
-                        try Task.checkCancellation()
-                        let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
-                        let fallbackPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
-                        try append(
-                            previousBuffer,
-                            at: fallbackPTS,
-                            adaptor: adaptor,
-                            writerInput: writerInput,
-                            writer: writer
-                        )
-                        sceneCutFallbackFrameCount += 1
-                    }
-                } else {
-                    let forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
-                    let backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
-
-                    for fraction in fractions {
-                        try Task.checkCancellation()
-                        let generated = try synthesizer.synthesize(
-                            source: previousBuffer,
-                            target: currentBuffer,
-                            forwardFlow: forward,
-                            backwardFlow: backward,
-                            fraction: fraction
-                        )
-
-                        let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
-                        let generatedPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
-                        try append(
-                            generated,
-                            at: generatedPTS,
-                            adaptor: adaptor,
-                            writerInput: writerInput,
-                            writer: writer
-                        )
-                        generatedFrameCount += 1
-                    }
-                }
-
-                let adjustedCurrent = CMTimeSubtract(currentPTS, originPTS)
-                let seconds = max(0, CMTimeGetSeconds(adjustedCurrent))
-                progress(min(max((seconds / durationSeconds) * 0.88, 0), 0.88))
             }
 
-            previousBuffer = currentBuffer
-            previousPTS = currentPTS
-        }
+            writerInput.markAsFinished()
+            try Task.checkCancellation()
+            try await finish(writer)
+            activeWriter = nil
+            activeReader = nil
+            progress(0.9)
 
-        if reader.status == .failed {
-            writer.cancelWriting()
-            throw GenerationError.readerFailed(reader.error?.localizedDescription ?? "Unknown reader failure")
-        }
-
-        if let previousBuffer, let previousPTS, let originPTS {
-            try append(
-                previousBuffer,
-                at: CMTimeSubtract(previousPTS, originPTS),
-                adaptor: adaptor,
-                writerInput: writerInput,
-                writer: writer
+            try Task.checkCancellation()
+            let muxedURL = try await muxOriginalAudio(
+                generatedVideoURL: silentURL,
+                originalURL: sourceURL,
+                destinationURL: finalURL
             )
+            try? FileManager.default.removeItem(at: silentURL)
+            try Task.checkCancellation()
+            progress(1)
+
+            return Result(
+                url: muxedURL,
+                generatedFrameCount: generatedFrameCount,
+                sceneCutFallbackFrameCount: sceneCutFallbackFrameCount,
+                sourceFrameCount: sourceFrameCount,
+                targetFPS: plan.targetFPS
+            )
+        } catch {
+            activeReader?.cancelReading()
+            activeWriter?.cancelWriting()
+            try? FileManager.default.removeItem(at: silentURL)
+            try? FileManager.default.removeItem(at: finalURL)
+            throw error
         }
-
-        writerInput.markAsFinished()
-        try await finish(writer)
-        progress(0.9)
-
-        let muxedURL = try await muxOriginalAudio(
-            generatedVideoURL: silentURL,
-            originalURL: sourceURL,
-            destinationURL: finalURL
-        )
-        try? FileManager.default.removeItem(at: silentURL)
-        progress(1)
-
-        return Result(
-            url: muxedURL,
-            generatedFrameCount: generatedFrameCount,
-            sceneCutFallbackFrameCount: sceneCutFallbackFrameCount,
-            sourceFrameCount: sourceFrameCount,
-            targetFPS: plan.targetFPS
-        )
     }
 
     private static func append(
@@ -325,7 +354,10 @@ final class FrameGenerationService {
         writerInput: AVAssetWriterInput,
         writer: AVAssetWriter
     ) throws {
+        try Task.checkCancellation()
+
         while !writerInput.isReadyForMoreMediaData {
+            try Task.checkCancellation()
             if writer.status == .failed {
                 throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "Writer became unavailable")
             }
@@ -344,15 +376,24 @@ final class FrameGenerationService {
     }
 
     private static func finish(_ writer: AVAssetWriter) async throws {
-        await withCheckedContinuation { continuation in
-            writer.finishWriting {
-                continuation.resume()
-            }
-        }
+        try Task.checkCancellation()
 
-        guard writer.status == .completed else {
-            throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "finishWriting failed")
-        }
+        try await withTaskCancellationHandler(operation: {
+            await withCheckedContinuation { continuation in
+                writer.finishWriting {
+                    continuation.resume()
+                }
+            }
+
+            guard writer.status == .completed else {
+                if writer.status == .cancelled {
+                    throw CancellationError()
+                }
+                throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "finishWriting failed")
+            }
+        }, onCancel: {
+            writer.cancelWriting()
+        })
     }
 
     private static func muxOriginalAudio(
@@ -360,6 +401,8 @@ final class FrameGenerationService {
         originalURL: URL,
         destinationURL: URL
     ) async throws -> URL {
+        try Task.checkCancellation()
+
         let generatedAsset = AVURLAsset(url: generatedVideoURL)
         let originalAsset = AVURLAsset(url: originalURL)
         let generatedTracks = try await generatedAsset.loadTracks(withMediaType: .video)
@@ -369,7 +412,9 @@ final class FrameGenerationService {
 
         let audioTracks = try await originalAsset.loadTracks(withMediaType: .audio)
         if audioTracks.isEmpty {
+            try Task.checkCancellation()
             try FileManager.default.moveItem(at: generatedVideoURL, to: destinationURL)
+            try Task.checkCancellation()
             return destinationURL
         }
 
@@ -392,6 +437,7 @@ final class FrameGenerationService {
         )
 
         for audioTrack in audioTracks {
+            try Task.checkCancellation()
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
@@ -411,21 +457,26 @@ final class FrameGenerationService {
         exporter.outputFileType = .mp4
         exporter.shouldOptimizeForNetworkUse = true
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            exporter.exportAsynchronously {
-                switch exporter.status {
-                case .completed:
-                    continuation.resume()
-                case .failed:
-                    continuation.resume(throwing: GenerationError.cannotMuxAudio)
-                case .cancelled:
-                    continuation.resume(throwing: CancellationError())
-                default:
-                    continuation.resume(throwing: GenerationError.cannotMuxAudio)
+        try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                exporter.exportAsynchronously {
+                    switch exporter.status {
+                    case .completed:
+                        continuation.resume()
+                    case .failed:
+                        continuation.resume(throwing: GenerationError.cannotMuxAudio)
+                    case .cancelled:
+                        continuation.resume(throwing: CancellationError())
+                    default:
+                        continuation.resume(throwing: GenerationError.cannotMuxAudio)
+                    }
                 }
             }
-        }
+        }, onCancel: {
+            exporter.cancelExport()
+        })
 
+        try Task.checkCancellation()
         return destinationURL
     }
 
