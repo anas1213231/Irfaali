@@ -52,18 +52,24 @@ struct FrameGenerationReadiness: Equatable, Sendable {
 
         static func current() -> Environment {
             #if targetEnvironment(simulator)
-            let simulator = true
+            // The simulator cannot model a physical iPhone's thermal or low-power
+            // state reliably. Keep it as an explicit QA caution without calling APIs
+            // that are unavailable in the simulator process.
+            return Environment(
+                metalAvailable: MTLCreateSystemDefaultDevice() != nil,
+                isSimulator: true,
+                lowPowerModeEnabled: false,
+                thermalLevel: .nominal
+            )
             #else
-            let simulator = false
-            #endif
-
             let processInfo = ProcessInfo.processInfo
             return Environment(
                 metalAvailable: MTLCreateSystemDefaultDevice() != nil,
-                isSimulator: simulator,
+                isSimulator: false,
                 lowPowerModeEnabled: processInfo.isLowPowerModeEnabled,
                 thermalLevel: ThermalLevel(processInfo.thermalState)
             )
+            #endif
         }
     }
 
@@ -129,6 +135,7 @@ struct FrameGenerationReadiness: Equatable, Sendable {
     }
 }
 
+#if !targetEnvironment(simulator)
 private extension FrameGenerationReadiness.ThermalLevel {
     init(_ state: ProcessInfo.ThermalState) {
         switch state {
@@ -145,3 +152,4 @@ private extension FrameGenerationReadiness.ThermalLevel {
         }
     }
 }
+#endif
