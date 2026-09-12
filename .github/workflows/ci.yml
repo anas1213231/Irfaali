@@ -67,9 +67,7 @@ jobs:
           UDID=$(xcrun simctl create "Irfaali CI" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
           echo "Created simulator: $UDID"
-
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices "$RUNTIME_ID"
 
       - name: Build for simulator
         run: |
@@ -79,6 +77,7 @@ jobs:
             -scheme Irfaali \
             -sdk iphonesimulator \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -destination-timeout 120 \
             CODE_SIGNING_ALLOWED=NO \
             clean build
 
@@ -90,6 +89,7 @@ jobs:
             -scheme Irfaali \
             -sdk iphonesimulator \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -destination-timeout 120 \
             CODE_SIGNING_ALLOWED=NO \
             test
 
