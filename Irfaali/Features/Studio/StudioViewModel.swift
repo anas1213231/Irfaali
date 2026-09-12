@@ -21,11 +21,14 @@ final class StudioViewModel: ObservableObject {
     }
 
     enum ProcessingError: LocalizedError {
+        case frameGenerationDeviceBlocked([String])
         case frameGenerationVerificationFailed([String])
         case frameGenerationVerificationUnavailable(String)
 
         var errorDescription: String? {
             switch self {
+            case .frameGenerationDeviceBlocked(let reasons):
+                return "محرك الفريمات وقف قبل يبدأ عشان نحمي الجودة والجهاز: \(reasons.joined(separator: " · "))"
             case .frameGenerationVerificationFailed(let failures):
                 let details = failures.joined(separator: " · ")
                 return "ارفعلي وقف الملف لأن فحص الفريمات ما عدى: \(details)"
@@ -76,6 +79,17 @@ final class StudioViewModel: ObservableObject {
             return nil
         }
         return FrameGenerationPlan.make(sourceFPS: info.sourceFPS, targetFPS: target)
+    }
+
+    var frameGenerationReadiness: FrameGenerationReadiness? {
+        guard let info, let plan = frameGenerationPlan else { return nil }
+        let size = settings.targetSize(for: info)
+        return FrameGenerationReadiness.evaluate(
+            plan: plan,
+            width: Int(size.width.rounded()),
+            height: Int(size.height.rounded()),
+            environment: .current()
+        )
     }
 
     var processingStageTextArabic: String {
@@ -179,6 +193,14 @@ final class StudioViewModel: ObservableObject {
 
             if wantsFrameGeneration, generationPlan?.strategy != .opticalFlow2x {
                 throw FrameGenerationService.GenerationError.unsupportedPlan
+            }
+
+            if wantsFrameGeneration,
+               let readiness = frameGenerationReadiness,
+               !readiness.canStart {
+                throw ProcessingError.frameGenerationDeviceBlocked(
+                    readiness.reasons.map(\.description)
+                )
             }
 
             let resolvedPreferHEVC = settings.codec == .hevc || (
