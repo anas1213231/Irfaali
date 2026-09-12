@@ -44,18 +44,37 @@ kernel void irfaaliMotionWarpInterpolate(
     const float4 warpedTarget = target.sample(linearSampler, targetUV);
     const float4 motionCompensated = mix(warpedSource, warpedTarget, fraction);
 
-    // A forward/backward consistency check reduces obvious tearing around
-    // occlusions. When the motion fields strongly disagree, fall back smoothly
-    // toward a conventional temporal blend instead of trusting a bad warp.
-    const float inconsistency = length(forward + backward);
-    const float motionConfidence = 1.0 / (1.0 + 0.08 * inconsistency);
-    const float4 temporalBlend = mix(
-        source.sample(linearSampler, uv),
-        target.sample(linearSampler, uv),
-        fraction
-    );
+    // Confidence is intentionally conservative around occlusions. Forward and
+    // backward flow should roughly cancel for the same moving point. Normalize
+    // that disagreement by motion magnitude so fast but valid motion does not get
+    // punished merely for being fast.
+    const float forwardMagnitude = length(forward);
+    const float backwardMagnitude = length(backward);
+    const float motionMagnitude = max(forwardMagnitude, backwardMagnitude);
+    const float normalizedFlowDisagreement = length(forward + backward) /
+        max(forwardMagnitude + backwardMagnitude, 1.0);
+    const float flowConfidence = 1.0 - smoothstep(0.12, 0.62, normalizedFlowDisagreement);
 
-    float4 result = mix(temporalBlend, motionCompensated, clamp(motionConfidence, 0.0, 1.0));
+    // Large photometric disagreement after warping usually means an occlusion,
+    // a bad flow vector or a newly revealed region. Those pixels are exactly where
+    // a 50/50 blend produces the most visible double-edge ghosting.
+    const float photometricError = length(warpedSource.rgb - warpedTarget.rgb);
+    const float photoConfidence = 1.0 - smoothstep(0.08, 0.42, photometricError);
+
+    // Static areas are already stable even when tiny flow noise disagrees. Apply
+    // the strict confidence gate progressively as real motion grows.
+    const float movingWeight = smoothstep(0.35, 2.0, motionMagnitude);
+    const float strictConfidence = clamp(flowConfidence * photoConfidence, 0.0, 1.0);
+    const float motionConfidence = mix(1.0, strictConfidence, movingWeight);
+
+    // For genuinely uncertain pixels, choose the temporally nearer original sample
+    // instead of creating a transparent-looking double edge. This fallback is only
+    // per-pixel; the frame remains motion synthesized everywhere confidence is good.
+    const float4 originalSource = source.sample(linearSampler, uv);
+    const float4 originalTarget = target.sample(linearSampler, uv);
+    const float4 occlusionFallback = fraction < 0.5 ? originalSource : originalTarget;
+
+    float4 result = mix(occlusionFallback, motionCompensated, motionConfidence);
     result.a = 1.0;
     output.write(result, gid);
 }
