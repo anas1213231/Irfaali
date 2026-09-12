@@ -1,9 +1,11 @@
 import SwiftUI
 
 struct AboutView: View {
+    @EnvironmentObject private var preferences: AppPreferences
+
     var body: some View {
         ZStack {
-            IrfaaliTheme.background.ignoresSafeArea()
+            ThemeBackground()
 
             ScrollView {
                 VStack(spacing: 18) {
@@ -16,7 +18,7 @@ struct AboutView: View {
                 .padding(.bottom, 36)
             }
         }
-        .navigationTitle("حول ارفعلي")
+        .navigationTitle(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -29,10 +31,10 @@ struct AboutView: View {
                         .frame(width: 108, height: 108)
                         .blur(radius: 18)
                     Circle()
-                        .fill(.white.opacity(0.055))
+                        .fill(.ultraThinMaterial)
                         .frame(width: 94, height: 94)
                         .overlay {
-                            Circle().stroke(.white.opacity(0.12), lineWidth: 1)
+                            Circle().stroke(.primary.opacity(0.08), lineWidth: 1)
                         }
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 58, weight: .medium))
@@ -42,10 +44,10 @@ struct AboutView: View {
 
                 VStack(spacing: 6) {
                     Text(AppBranding.appName)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                    Text("Premium Video Engine")
+                        .font(IrfaaliTheme.titleFont(32))
+                    Text(preferences.text(ar: "محرك فيديو احترافي", en: "Premium Video Engine"))
                         .font(.subheadline.weight(.semibold))
-                        .tracking(0.4)
+                        .tracking(0.3)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -60,14 +62,14 @@ struct AboutView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "crown.fill")
                         .foregroundStyle(IrfaaliTheme.accent)
-                    Text("OWNER IDENTITY")
+                    Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER IDENTITY"))
                         .font(.caption2.bold())
-                        .tracking(1.8)
+                        .tracking(preferences.isArabic ? 0.2 : 1.8)
                         .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 5) {
-                    Text("Created & Owned by")
+                    Text(preferences.text(ar: "المالك والمطور", en: "Created & Owned by"))
                         .foregroundStyle(.primary)
                     Link(AppBranding.ownerHandle, destination: AppBranding.telegramURL)
                         .fontWeight(.bold)
@@ -102,7 +104,7 @@ struct AboutView: View {
                 }
                 .buttonStyle(.plain)
 
-                Divider().overlay(.white.opacity(0.08))
+                Divider().opacity(0.25)
 
                 Text(AppBranding.copyright)
                     .font(.caption)
@@ -118,11 +120,17 @@ struct AboutView: View {
                     .font(.title2)
                     .foregroundStyle(IrfaaliTheme.accent)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Clean Output")
-                        .font(.headline)
-                    Text("حقوق الملكية تظهر داخل التطبيق فقط. لا يضيف ارفعلي شعارًا أو اسم مطور أو Watermark أو Intro/Outro إلى فيديو المستخدم.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean Output"))
+                        .font(.headline.weight(.bold))
+                    Text(
+                        preferences.text(
+                            ar: "حقوق ارفعلي تظهر داخل التطبيق بس. ما نحط Watermark ولا اسم مطور ولا Intro/Outro على فيديوك.",
+                            en: "Ownership appears inside the app only. Irfaali does not add a watermark, developer name, intro or outro to your video."
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
