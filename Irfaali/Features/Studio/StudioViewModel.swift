@@ -59,13 +59,18 @@ final class StudioViewModel: ObservableObject {
     private let frameGenerator = FrameGenerationService()
     private let enhancer = VideoEnhancementService()
     private let photoSaver = PhotoLibrarySaver()
+    private var activeProcessingTask: Task<ExportOutcome?, Never>?
 
     /// Frame generation stays gated in the public Studio button until device QA is
-    /// complete. The real engine is already wired into `process()` so QA/internal
-    /// calls exercise the exact production pipeline instead of a mock path.
+    /// complete. The real engine is already wired into the production processing
+    /// task so QA/internal calls exercise the exact path instead of a mock.
     var canProcess: Bool {
         guard let info else { return false }
         return !settings.needsFrameGeneration(for: info) && !isAnalyzing && !isProcessing
+    }
+
+    var canCancelProcessing: Bool {
+        isProcessing && activeProcessingTask != nil
     }
 
     var needsFrameGeneration: Bool {
@@ -132,6 +137,7 @@ final class StudioViewModel: ObservableObject {
     }
 
     func importVideo(url: URL) async {
+        cancelProcessing()
         isAnalyzing = true
         processingStage = .idle
         generatedFrameCount = 0
@@ -175,6 +181,26 @@ final class StudioViewModel: ObservableObject {
     }
 
     func process() async -> ExportOutcome? {
+        if let activeProcessingTask {
+            return await activeProcessingTask.value
+        }
+
+        let task = Task { [weak self] () -> ExportOutcome? in
+            guard let self else { return nil }
+            return await self.performProcessing()
+        }
+        activeProcessingTask = task
+
+        let result = await task.value
+        activeProcessingTask = nil
+        return result
+    }
+
+    func cancelProcessing() {
+        activeProcessingTask?.cancel()
+    }
+
+    private func performProcessing() async -> ExportOutcome? {
         guard let info else { return nil }
         isProcessing = true
         processingStage = .preparing
@@ -189,7 +215,11 @@ final class StudioViewModel: ObservableObject {
         saveState = .idle
         defer { isProcessing = false }
 
+        var transientURLs = Set<URL>()
+
         do {
+            try Task.checkCancellation()
+
             let usesEnhancement = enhancement.isEnabled
             let wantsFrameGeneration = settings.needsFrameGeneration(for: info)
             let generationPlan = wantsFrameGeneration ? frameGenerationPlan : nil
@@ -251,6 +281,8 @@ final class StudioViewModel: ObservableObject {
                     self?.progress = min(max(value * exportEnd, 0), exportEnd)
                 }
             }
+            transientURLs.insert(baseResult.url)
+            try Task.checkCancellation()
 
             var finalResult = baseResult
             var generationResult: FrameGenerationService.Result?
@@ -279,8 +311,11 @@ final class StudioViewModel: ObservableObject {
                 generationResult = generated
                 generatedFrameCount = generated.generatedFrameCount
                 sceneCutFallbackFrameCount = generated.sceneCutFallbackFrameCount
+                transientURLs.insert(generated.url)
+
                 if generated.url != baseResult.url {
                     try? FileManager.default.removeItem(at: baseResult.url)
+                    transientURLs.remove(baseResult.url)
                 }
 
                 finalResult = ExportOutcome(
@@ -291,6 +326,8 @@ final class StudioViewModel: ObservableObject {
                     codecLabel: resolvedPreferHEVC ? "H.265 / HEVC" : "H.264 / AVC"
                 )
             }
+
+            try Task.checkCancellation()
 
             if usesEnhancement {
                 processingStage = .enhancing
@@ -310,8 +347,10 @@ final class StudioViewModel: ObservableObject {
                     }
                 }
 
+                transientURLs.insert(enhancedURL)
                 if enhancedURL != inputURL {
                     try? FileManager.default.removeItem(at: inputURL)
+                    transientURLs.remove(inputURL)
                 }
 
                 finalResult = ExportOutcome(
@@ -323,6 +362,7 @@ final class StudioViewModel: ObservableObject {
                 )
             }
 
+            try Task.checkCancellation()
             processingStage = .verifying
             progress = max(progress, 0.98)
 
@@ -359,14 +399,27 @@ final class StudioViewModel: ObservableObject {
                 }
             }
 
+            try Task.checkCancellation()
             lastOutcome = finalResult
+            transientURLs.remove(finalResult.url)
             progress = 1
             processingStage = .complete
             return finalResult
-        } catch {
+        } catch is CancellationError {
+            transientURLs.forEach { try? FileManager.default.removeItem(at: $0) }
             processingStage = .idle
             progress = 0
             lastOutcome = nil
+            outputInfo = nil
+            validationMessage = nil
+            errorMessage = "وقفناها يا وحش 👍 وما خلّينا أي ملف ناقص."
+            return nil
+        } catch {
+            transientURLs.forEach { try? FileManager.default.removeItem(at: $0) }
+            processingStage = .idle
+            progress = 0
+            lastOutcome = nil
+            outputInfo = nil
             errorMessage = error.localizedDescription
             return nil
         }
