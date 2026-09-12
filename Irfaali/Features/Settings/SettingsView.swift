@@ -5,7 +5,7 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            IrfaaliTheme.background.ignoresSafeArea()
+            ThemeBackground()
 
             ScrollView {
                 VStack(spacing: 16) {
@@ -22,8 +22,8 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
-        .animation(.snappy, value: preferences.language)
-        .animation(.snappy, value: preferences.appearance)
+        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.language)
+        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.appearance)
     }
 
     private var languageCard: some View {
@@ -128,7 +128,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(preferences.text(ar: "المالك", en: "OWNER"))
                     .font(.caption2.bold())
-                    .tracking(1.5)
+                    .tracking(preferences.isArabic ? 0.2 : 1.5)
                     .foregroundStyle(.secondary)
 
                 Link(destination: AppBranding.telegramURL) {
