@@ -20,6 +20,18 @@ final class StudioViewModel: ObservableObject {
         case complete
     }
 
+    enum ProcessingError: LocalizedError {
+        case frameGenerationVerificationFailed([String])
+
+        var errorDescription: String? {
+            switch self {
+            case .frameGenerationVerificationFailed(let failures):
+                let details = failures.joined(separator: " · ")
+                return "ارفعلي وقف الملف لأن فحص الفريمات ما عدى: \(details)"
+            }
+        }
+    }
+
     @Published private(set) var info: VideoAssetInfo?
     @Published private(set) var outputInfo: VideoAssetInfo?
     @Published var settings: VideoProcessingSettings = .standard
@@ -29,6 +41,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var processingStage: ProcessingStage = .idle
     @Published private(set) var progress: Double = 0
     @Published private(set) var generatedFrameCount = 0
+    @Published private(set) var frameGenerationVerification: FrameGenerationVerification?
     @Published private(set) var lastOutcome: ExportOutcome?
     @Published private(set) var validationMessage: String?
     @Published private(set) var saveState: SaveState = .idle
@@ -104,6 +117,7 @@ final class StudioViewModel: ObservableObject {
         isAnalyzing = true
         processingStage = .idle
         generatedFrameCount = 0
+        frameGenerationVerification = nil
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -147,8 +161,10 @@ final class StudioViewModel: ObservableObject {
         processingStage = .preparing
         progress = 0
         generatedFrameCount = 0
+        frameGenerationVerification = nil
         errorMessage = nil
         validationMessage = nil
+        lastOutcome = nil
         outputInfo = nil
         saveState = .idle
         defer { isProcessing = false }
@@ -209,6 +225,7 @@ final class StudioViewModel: ObservableObject {
             }
 
             var finalResult = baseResult
+            var generationResult: FrameGenerationService.Result?
 
             if wantsFrameGeneration,
                let generationPlan,
@@ -231,6 +248,7 @@ final class StudioViewModel: ObservableObject {
                     }
                 }
 
+                generationResult = generated
                 generatedFrameCount = generated.generatedFrameCount
                 if generated.url != baseResult.url {
                     try? FileManager.default.removeItem(at: baseResult.url)
@@ -276,16 +294,38 @@ final class StudioViewModel: ObservableObject {
                 )
             }
 
-            lastOutcome = finalResult
             processingStage = .verifying
             progress = max(progress, 0.98)
 
             do {
-                outputInfo = try await analyzer.analyze(url: finalResult.url)
+                let analyzedOutput = try await analyzer.analyze(url: finalResult.url)
+                outputInfo = analyzedOutput
+
+                if let generationResult {
+                    let verification = FrameGenerationVerification.verify2x(
+                        sourceFrameCount: generationResult.sourceFrameCount,
+                        generatedFrameCount: generationResult.generatedFrameCount,
+                        expectedFPS: generationResult.targetFPS,
+                        actualFPS: analyzedOutput.sourceFPS
+                    )
+                    frameGenerationVerification = verification
+
+                    if case .failed(let failures) = verification.status {
+                        let details = failures.map(\.description)
+                        validationMessage = details.joined(separator: " · ")
+                        throw ProcessingError.frameGenerationVerificationFailed(details)
+                    }
+                }
+            } catch let error as ProcessingError {
+                throw error
             } catch {
                 validationMessage = "تم إنشاء الملف، لكن تعذر التحقق التقني بعد التصدير: \(error.localizedDescription)"
+                if wantsFrameGeneration {
+                    throw error
+                }
             }
 
+            lastOutcome = finalResult
             progress = 1
             processingStage = .complete
             return finalResult
