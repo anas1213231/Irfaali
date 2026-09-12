@@ -22,12 +22,15 @@ final class StudioViewModel: ObservableObject {
 
     enum ProcessingError: LocalizedError {
         case frameGenerationVerificationFailed([String])
+        case frameGenerationVerificationUnavailable(String)
 
         var errorDescription: String? {
             switch self {
             case .frameGenerationVerificationFailed(let failures):
                 let details = failures.joined(separator: " · ")
                 return "ارفعلي وقف الملف لأن فحص الفريمات ما عدى: \(details)"
+            case .frameGenerationVerificationUnavailable(let reason):
+                return "توليد الفريمات خلص، بس ما قدرنا نثبت النتيجة تقنيًا، لذلك ما راح نعتمد الملف: \(reason)"
             }
         }
     }
@@ -313,6 +316,8 @@ final class StudioViewModel: ObservableObject {
                     if case .failed(let failures) = verification.status {
                         let details = failures.map(\.description)
                         validationMessage = details.joined(separator: " · ")
+                        try? FileManager.default.removeItem(at: finalResult.url)
+                        outputInfo = nil
                         throw ProcessingError.frameGenerationVerificationFailed(details)
                     }
                 }
@@ -321,7 +326,9 @@ final class StudioViewModel: ObservableObject {
             } catch {
                 validationMessage = "تم إنشاء الملف، لكن تعذر التحقق التقني بعد التصدير: \(error.localizedDescription)"
                 if wantsFrameGeneration {
-                    throw error
+                    try? FileManager.default.removeItem(at: finalResult.url)
+                    outputInfo = nil
+                    throw ProcessingError.frameGenerationVerificationUnavailable(error.localizedDescription)
                 }
             }
 
@@ -331,6 +338,8 @@ final class StudioViewModel: ObservableObject {
             return finalResult
         } catch {
             processingStage = .idle
+            progress = 0
+            lastOutcome = nil
             errorMessage = error.localizedDescription
             return nil
         }
