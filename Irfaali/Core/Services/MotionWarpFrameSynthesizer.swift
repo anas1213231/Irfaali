@@ -42,6 +42,13 @@ final class MotionWarpFrameSynthesizer {
         }
     }
 
+    private struct MetalBackedTexture {
+        // Retaining CVMetalTexture keeps the Core Video / IOSurface bridge alive
+        // for the entire GPU command. The MTLTexture is the actual encoder input.
+        let cvTexture: CVMetalTexture
+        let texture: MTLTexture
+    }
+
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private let pipeline: MTLComputePipelineState
@@ -223,7 +230,7 @@ final class MotionWarpFrameSynthesizer {
         width: Int,
         height: Int,
         name: String
-    ) throws -> CVMetalTexture {
+    ) throws -> MetalBackedTexture {
         var cvTexture: CVMetalTexture?
         let status = CVMetalTextureCacheCreateTextureFromImage(
             kCFAllocatorDefault,
@@ -239,9 +246,9 @@ final class MotionWarpFrameSynthesizer {
 
         guard status == kCVReturnSuccess,
               let cvTexture,
-              CVMetalTextureGetTexture(cvTexture) != nil else {
+              let texture = CVMetalTextureGetTexture(cvTexture) else {
             throw SynthesisError.cannotCreateTexture(name)
         }
-        return cvTexture
+        return MetalBackedTexture(cvTexture: cvTexture, texture: texture)
     }
 }
