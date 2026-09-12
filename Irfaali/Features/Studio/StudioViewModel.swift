@@ -47,6 +47,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var processingStage: ProcessingStage = .idle
     @Published private(set) var progress: Double = 0
     @Published private(set) var generatedFrameCount = 0
+    @Published private(set) var sceneCutFallbackFrameCount = 0
     @Published private(set) var frameGenerationVerification: FrameGenerationVerification?
     @Published private(set) var lastOutcome: ExportOutcome?
     @Published private(set) var validationMessage: String?
@@ -134,6 +135,7 @@ final class StudioViewModel: ObservableObject {
         isAnalyzing = true
         processingStage = .idle
         generatedFrameCount = 0
+        sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
         errorMessage = nil
         validationMessage = nil
@@ -178,6 +180,7 @@ final class StudioViewModel: ObservableObject {
         processingStage = .preparing
         progress = 0
         generatedFrameCount = 0
+        sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
         errorMessage = nil
         validationMessage = nil
@@ -275,6 +278,7 @@ final class StudioViewModel: ObservableObject {
 
                 generationResult = generated
                 generatedFrameCount = generated.generatedFrameCount
+                sceneCutFallbackFrameCount = generated.sceneCutFallbackFrameCount
                 if generated.url != baseResult.url {
                     try? FileManager.default.removeItem(at: baseResult.url)
                 }
@@ -330,6 +334,7 @@ final class StudioViewModel: ObservableObject {
                     let verification = FrameGenerationVerification.verify2x(
                         sourceFrameCount: generationResult.sourceFrameCount,
                         generatedFrameCount: generationResult.generatedFrameCount,
+                        sceneCutFallbackFrameCount: generationResult.sceneCutFallbackFrameCount,
                         expectedFPS: generationResult.targetFPS,
                         actualFPS: analyzedOutput.sourceFPS
                     )
