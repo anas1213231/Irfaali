@@ -10,12 +10,22 @@ final class StudioViewModel: ObservableObject {
         case failed(String)
     }
 
+    enum ProcessingStage: Equatable {
+        case idle
+        case preparing
+        case exporting
+        case enhancing
+        case verifying
+        case complete
+    }
+
     @Published private(set) var info: VideoAssetInfo?
     @Published private(set) var outputInfo: VideoAssetInfo?
     @Published var settings: VideoProcessingSettings = .standard
     @Published var enhancement: VideoEnhancementSettings = .off
     @Published private(set) var isAnalyzing = false
     @Published private(set) var isProcessing = false
+    @Published private(set) var processingStage: ProcessingStage = .idle
     @Published private(set) var progress: Double = 0
     @Published private(set) var lastOutcome: ExportOutcome?
     @Published private(set) var validationMessage: String?
@@ -38,21 +48,42 @@ final class StudioViewModel: ObservableObject {
     }
 
     var processingStageTextArabic: String {
-        if enhancement.isEnabled && progress >= 0.72 {
+        switch processingStage {
+        case .idle:
+            return "جاهزين متى ما أنت جاهز 😎"
+        case .preparing:
+            return "نجهّز المحرك…"
+        case .exporting:
+            return "قاعدين نبني الملف مضبوط 🔥"
+        case .enhancing:
             return "نلمّع التفاصيل الحين ✨"
+        case .verifying:
+            return "آخر فحص يا وحش 👀"
+        case .complete:
+            return "خلصناها صح ✅"
         }
-        return "قاعدين نضبط الملف…"
     }
 
     var processingStageTextEnglish: String {
-        if enhancement.isEnabled && progress >= 0.72 {
+        switch processingStage {
+        case .idle:
+            return "Ready when you are."
+        case .preparing:
+            return "Preparing the engine…"
+        case .exporting:
+            return "Building the output…"
+        case .enhancing:
             return "Enhancing image details…"
+        case .verifying:
+            return "Running final verification…"
+        case .complete:
+            return "Processing complete."
         }
-        return "Processing the video…"
     }
 
     func importVideo(url: URL) async {
         isAnalyzing = true
+        processingStage = .idle
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -93,6 +124,7 @@ final class StudioViewModel: ObservableObject {
     func process() async -> ExportOutcome? {
         guard let info else { return nil }
         isProcessing = true
+        processingStage = .preparing
         progress = 0
         errorMessage = nil
         validationMessage = nil
@@ -104,6 +136,7 @@ final class StudioViewModel: ObservableObject {
             let usesEnhancement = enhancement.isEnabled
             let exportWeight = usesEnhancement ? 0.72 : 1.0
 
+            processingStage = .exporting
             let baseResult = try await exporter.export(info: info, settings: settings) { [weak self] value in
                 Task { @MainActor in
                     self?.progress = min(max(value * exportWeight, 0), exportWeight)
@@ -113,6 +146,7 @@ final class StudioViewModel: ObservableObject {
             var finalResult = baseResult
 
             if usesEnhancement {
+                processingStage = .enhancing
                 let preferHEVC = settings.codec == .hevc || (
                     settings.codec == .source &&
                     (info.videoCodec.localizedCaseInsensitiveContains("HEVC") || info.videoCodec.localizedCaseInsensitiveContains("H.265"))
@@ -143,6 +177,7 @@ final class StudioViewModel: ObservableObject {
 
             progress = 1
             lastOutcome = finalResult
+            processingStage = .verifying
 
             do {
                 outputInfo = try await analyzer.analyze(url: finalResult.url)
@@ -150,8 +185,10 @@ final class StudioViewModel: ObservableObject {
                 validationMessage = "تم إنشاء الملف، لكن تعذر التحقق التقني بعد التصدير: \(error.localizedDescription)"
             }
 
+            processingStage = .complete
             return finalResult
         } catch {
+            processingStage = .idle
             errorMessage = error.localizedDescription
             return nil
         }
