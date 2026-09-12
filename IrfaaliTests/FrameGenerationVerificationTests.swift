@@ -12,6 +12,7 @@ final class FrameGenerationVerificationTests: XCTestCase {
 
         XCTAssertTrue(result.passed)
         XCTAssertEqual(result.status, .passed)
+        XCTAssertEqual(result.sceneCutFallbackFrameCount, 0)
     }
 
     func testRejectsUnchangedSourceCadence() {
@@ -25,7 +26,7 @@ final class FrameGenerationVerificationTests: XCTestCase {
         XCTAssertFalse(result.passed)
     }
 
-    func testRejectsMissingGeneratedFrames() {
+    func testRejectsMissingIntermediateFrames() {
         let result = FrameGenerationVerification.verify2x(
             sourceFrameCount: 120,
             generatedFrameCount: 0,
@@ -37,7 +38,7 @@ final class FrameGenerationVerificationTests: XCTestCase {
         guard case .failed(let failures) = result.status else {
             return XCTFail("Expected verification failure")
         }
-        XCTAssertTrue(failures.contains(.noGeneratedFrames))
+        XCTAssertTrue(failures.contains(.noIntermediateFrames))
     }
 
     func testAllowsSmallTailDecodeToleranceOnLongClips() {
@@ -60,5 +61,20 @@ final class FrameGenerationVerificationTests: XCTestCase {
         )
 
         XCTAssertFalse(result.passed)
+    }
+
+    func testSceneCutFallbackCountsForCadenceButNotAsGeneratedFrame() {
+        let result = FrameGenerationVerification.verify2x(
+            sourceFrameCount: 101,
+            generatedFrameCount: 94,
+            sceneCutFallbackFrameCount: 6,
+            expectedFPS: 60,
+            actualFPS: 59.94
+        )
+
+        XCTAssertTrue(result.passed)
+        XCTAssertEqual(result.generatedFrameCount, 94)
+        XCTAssertEqual(result.sceneCutFallbackFrameCount, 6)
+        XCTAssertEqual(result.totalIntermediateFrameCount, 100)
     }
 }
