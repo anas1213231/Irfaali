@@ -6,7 +6,7 @@ on:
   pull_request:
 
 concurrency:
-  group: ios-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ios-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
