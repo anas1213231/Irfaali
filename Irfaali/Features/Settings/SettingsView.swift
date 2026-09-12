@@ -1,12 +1,17 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject private var preferences: AppPreferences
+
     var body: some View {
         ZStack {
-            IrfaaliTheme.background.ignoresSafeArea()
+            ThemeBackground()
 
             ScrollView {
                 VStack(spacing: 16) {
+                    languageCard
+                    appearanceCard
+                    experienceCard
                     developerCard
                     aboutCard
                     accessCard
@@ -16,15 +21,114 @@ struct SettingsView: View {
                 .padding(.bottom, 36)
             }
         }
-        .navigationTitle("الإعدادات")
+        .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
+        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.language)
+        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.appearance)
+    }
+
+    private var languageCard: some View {
+        PremiumSurface {
+            VStack(alignment: .leading, spacing: 14) {
+                Label(
+                    preferences.text(ar: "لغة التطبيق", en: "App Language"),
+                    systemImage: "character.bubble.fill"
+                )
+                .font(.headline.weight(.bold))
+
+                Picker("Language", selection: $preferences.language) {
+                    Text("العربية").tag(AppPreferences.Language.arabic)
+                    Text("English").tag(AppPreferences.Language.english)
+                }
+                .pickerStyle(.segmented)
+
+                Text(
+                    preferences.text(
+                        ar: "اختار اللي يريحك يا وحش — ونرتب الواجهة من اليمين أو اليسار لحالها.",
+                        en: "Choose your language and the interface direction updates automatically."
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var appearanceCard: some View {
+        PremiumSurface {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Label(
+                        preferences.text(ar: "ثيم التطبيق", en: "Appearance"),
+                        systemImage: "circle.lefthalf.filled"
+                    )
+                    .font(.headline.weight(.bold))
+
+                    Spacer()
+
+                    Text(preferences.appearanceName(preferences.appearance))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IrfaaliTheme.accent)
+                }
+
+                VStack(spacing: 9) {
+                    ForEach(AppPreferences.Appearance.allCases) { appearance in
+                        Button {
+                            preferences.appearance = appearance
+                        } label: {
+                            HStack(spacing: 12) {
+                                themePreview(for: appearance)
+
+                                Text(preferences.appearanceName(appearance))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(preferences.appearance == appearance ? IrfaaliTheme.accent : .secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private var experienceCard: some View {
+        PremiumSurface {
+            VStack(spacing: 14) {
+                Toggle(isOn: $preferences.animationsEnabled) {
+                    Label(
+                        preferences.text(ar: "الأنيميشن والحركات", en: "Animations & Motion"),
+                        systemImage: "sparkles"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                }
+                .tint(IrfaaliTheme.accent)
+
+                Divider().opacity(0.3)
+
+                Toggle(isOn: $preferences.hapticsEnabled) {
+                    Label(
+                        preferences.text(ar: "اهتزازات اللمس", en: "Haptic Feedback"),
+                        systemImage: "iphone.radiowaves.left.and.right"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                }
+                .tint(IrfaaliTheme.accent)
+            }
+        }
     }
 
     private var developerCard: some View {
         PremiumSurface {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Developer")
+                Text(preferences.text(ar: "المالك", en: "OWNER"))
                     .font(.caption2.bold())
-                    .tracking(1.5)
+                    .tracking(preferences.isArabic ? 0.2 : 1.5)
                     .foregroundStyle(.secondary)
 
                 Link(destination: AppBranding.telegramURL) {
@@ -39,9 +143,9 @@ struct SettingsView: View {
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text(AppBranding.ownerHandle)
-                                .font(.headline)
+                                .font(.headline.weight(.bold))
                                 .foregroundStyle(.primary)
-                            Text("Owner · Telegram")
+                            Text(preferences.text(ar: "تلجرام · حقوق ارفعلي", en: "Telegram · Irfaali owner"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -68,12 +172,17 @@ struct SettingsView: View {
                         .font(.title2)
                         .foregroundStyle(IrfaaliTheme.accent)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("حول ارفعلي")
-                            .font(.headline)
+                        Text(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
+                            .font(.headline.weight(.bold))
                             .foregroundStyle(.primary)
-                        Text("الملكية، الحقوق، الإصدار وهوية المنتج")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            preferences.text(
+                                ar: "الحقوق، الإصدار وهوية التطبيق",
+                                en: "Ownership, version and app identity"
+                            )
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Image(systemName: "chevron.forward")
@@ -89,8 +198,11 @@ struct SettingsView: View {
         PremiumSurface {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Label("الوصول", systemImage: "sparkles")
-                        .font(.headline)
+                    Label(
+                        preferences.text(ar: "الوصول", en: "Access"),
+                        systemImage: "sparkles"
+                    )
+                    .font(.headline.weight(.bold))
                     Spacer()
                     Text("FREE")
                         .font(.caption2.bold())
@@ -101,14 +213,19 @@ struct SettingsView: View {
                         .background(IrfaaliTheme.accent.opacity(0.11), in: Capsule())
                 }
 
-                Text("جميع قدرات التطبيق الحالية متاحة بدون اشتراك أو Paywall أو Credits أو حدود تصدير مدفوعة أو إعلانات إجبارية.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    preferences.text(
+                        ar: "كل قدرات ارفعلي مجانية — بدون اشتراك، بدون Credits، وبدون Paywall.",
+                        en: "Irfaali is free to use with no subscriptions, credits or paywalls."
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
-                Divider().overlay(.white.opacity(0.08))
+                Divider().opacity(0.3)
 
                 HStack {
-                    Text("Version")
+                    Text(preferences.text(ar: "الإصدار", en: "Version"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -117,6 +234,35 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func themePreview(for appearance: AppPreferences.Appearance) -> some View {
+        let colors: [Color] = {
+            switch appearance {
+            case .system:
+                [.white, .black]
+            case .pureBlack:
+                [.black, .black]
+            case .dark:
+                [Color(white: 0.10), Color(white: 0.18)]
+            case .light:
+                [Color(white: 0.82), .white]
+            case .pureWhite:
+                [.white, .white]
+            }
+        }()
+
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: colors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(Circle().stroke(.secondary.opacity(0.25), lineWidth: 1))
+            .frame(width: 30, height: 30)
     }
 
     private var versionText: String {

@@ -2,8 +2,12 @@ name: iOS CI
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, "feature/**", "build/**"]
   pull_request:
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:

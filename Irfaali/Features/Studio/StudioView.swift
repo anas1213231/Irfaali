@@ -7,10 +7,12 @@ struct StudioView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showFileImporter = false
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var preferences: AppPreferences
 
     var body: some View {
         ZStack {
-            IrfaaliTheme.background.ignoresSafeArea()
+            ThemeBackground()
+
             ScrollView {
                 VStack(spacing: 18) {
                     hero
@@ -21,10 +23,10 @@ struct StudioView: View {
                     if let message = model.errorMessage { errorCard(message) }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 36)
+                .padding(.bottom, 40)
             }
         }
-        .navigationTitle("ارفعلي")
+        .navigationTitle(AppBranding.appName)
         .navigationBarTitleDisplayMode(.large)
         .sensoryFeedback(.success, trigger: model.lastOutcome?.url)
         .sensoryFeedback(.success, trigger: model.saveState == .saved)
@@ -64,36 +66,61 @@ struct StudioView: View {
     private var hero: some View {
         PremiumSurface {
             VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text("VIDEO ENGINE")
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(preferences.text(ar: "محرك ارفعلي", en: "IRFAALI ENGINE"))
                             .font(.caption2.weight(.bold))
-                            .tracking(2.4)
+                            .tracking(preferences.isArabic ? 0.3 : 2.2)
                             .foregroundStyle(IrfaaliTheme.accent)
-                        Text("حلّل. جهّز. صدّر.")
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                        Text("بيانات حقيقية من AVFoundation، بلا FPS وهمي وبلا ادعاءات ضغط غير واقعية.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+
+                        Text(preferences.text(ar: "ارفع فيديو يا وحش 🔥", en: "Drop in a video."))
+                            .font(IrfaaliTheme.titleFont(30))
+
+                        Text(
+                            preferences.text(
+                                ar: "نفحص الفيديو من داخله — الدقة، الفريمات، الكودك، البت ريت والصوت — وبعدها نعطيك معالجة حقيقية بدون أرقام وهمية.",
+                                en: "We inspect the real media tracks — resolution, frame rate, codec, bitrate and audio — then process the actual file, not fake metadata."
+                            )
+                        )
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer()
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 42, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(IrfaaliTheme.accent)
+
+                    Spacer(minLength: 6)
+
+                    ZStack {
+                        Circle()
+                            .fill(IrfaaliTheme.accent.opacity(0.12))
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 42, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(IrfaaliTheme.accent)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    statusPill(icon: "bolt.fill", ar: "محلي", en: "ON DEVICE")
+                    statusPill(icon: "lock.fill", ar: "خصوصي", en: "PRIVATE")
+                    statusPill(icon: "sparkles", ar: "مجاني", en: "FREE")
                 }
 
                 HStack(spacing: 10) {
                     PhotosPicker(selection: $photoItem, matching: .videos) {
-                        Label("اختيار من الصور", systemImage: "photo.on.rectangle.angled")
-                            .frame(maxWidth: .infinity)
+                        Label(
+                            preferences.text(ar: "اختار فيديو", en: "Choose Video"),
+                            systemImage: "photo.on.rectangle.angled"
+                        )
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PremiumPrimaryButtonStyle())
 
                     Button { showFileImporter = true } label: {
-                        Image(systemName: "folder")
+                        Image(systemName: "folder.fill")
                             .frame(width: 48, height: 48)
                     }
+                    .accessibilityLabel(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"))
                     .buttonStyle(PremiumSecondaryButtonStyle())
                 }
             }
@@ -101,14 +128,30 @@ struct StudioView: View {
         .padding(.top, 8)
     }
 
+    private func statusPill(icon: String, ar: String, en: String) -> some View {
+        Label(preferences.text(ar: ar, en: en), systemImage: icon)
+            .font(.caption2.weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(IrfaaliTheme.accent.opacity(0.09), in: Capsule())
+            .foregroundStyle(.secondary)
+    }
+
     private var analyzingCard: some View {
         PremiumSurface {
             HStack(spacing: 14) {
                 ProgressView().tint(IrfaaliTheme.accent)
-                VStack(alignment: .leading) {
-                    Text("جاري التحليل الحقيقي…").font(.headline)
-                    Text("نقرأ tracks، codec، FPS، bitrate، الصوت والحاوية.")
-                        .font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(preferences.text(ar: "ثواني ونفصفصه لك 👀", en: "Reading the real video data…"))
+                        .font(.headline.weight(.bold))
+                    Text(
+                        preferences.text(
+                            ar: "نقرأ التراكات، الكودك، FPS، البت ريت، الصوت والحاوية.",
+                            en: "Inspecting tracks, codec, FPS, bitrate, audio and container."
+                        )
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -121,45 +164,69 @@ struct StudioView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("تحليل المصدر").font(.title3.bold())
-                            Text(info.fileName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Text(preferences.text(ar: "فحص المصدر", en: "Source Scan"))
+                                .font(.title3.bold())
+                            Text(info.fileName)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                         Spacer()
                         Text(info.dynamicRange)
                             .font(.caption.bold())
-                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
                             .background(IrfaaliTheme.accent.opacity(0.12), in: Capsule())
                     }
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        MetricTile(icon: "rectangle.portrait", title: "الدقة", value: "\(info.width)×\(info.height)")
-                        MetricTile(icon: "speedometer", title: "Source FPS", value: IrfaaliFormatters.fps(info.sourceFPS))
-                        MetricTile(icon: "film.stack", title: "Video Codec", value: info.videoCodec)
-                        MetricTile(icon: "waveform", title: "Video Bitrate", value: IrfaaliFormatters.bitrate(info.estimatedBitrate))
-                        MetricTile(icon: "clock", title: "المدة", value: IrfaaliFormatters.duration(info.duration))
-                        MetricTile(icon: "internaldrive", title: "الحجم", value: IrfaaliFormatters.byteCount.string(fromByteCount: info.fileSizeBytes))
-                        MetricTile(icon: "shippingbox", title: "الحاوية", value: info.container)
-                        MetricTile(icon: "speaker.wave.2", title: "الصوت", value: audioSummary(info))
+                        MetricTile(icon: "rectangle.portrait", title: preferences.text(ar: "الدقة", en: "Resolution"), value: "\(info.width)×\(info.height)")
+                        MetricTile(icon: "speedometer", title: "FPS", value: IrfaaliFormatters.fps(info.sourceFPS))
+                        MetricTile(icon: "film.stack", title: preferences.text(ar: "الكودك", en: "Video Codec"), value: info.videoCodec)
+                        MetricTile(icon: "waveform", title: preferences.text(ar: "البت ريت", en: "Video Bitrate"), value: IrfaaliFormatters.bitrate(info.estimatedBitrate))
+                        MetricTile(icon: "clock", title: preferences.text(ar: "المدة", en: "Duration"), value: IrfaaliFormatters.duration(info.duration))
+                        MetricTile(icon: "internaldrive", title: preferences.text(ar: "الحجم", en: "Size"), value: IrfaaliFormatters.byteCount.string(fromByteCount: info.fileSizeBytes))
+                        MetricTile(icon: "shippingbox", title: preferences.text(ar: "الحاوية", en: "Container"), value: info.container)
+                        MetricTile(icon: "speaker.wave.2", title: preferences.text(ar: "الصوت", en: "Audio"), value: audioSummary(info))
                     }
 
-                    Divider().overlay(.white.opacity(0.08))
+                    Divider().opacity(0.22)
                     compatibilityRow(info)
                 }
             }
 
             PremiumSurface {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Optimization Preset").font(.headline)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(preferences.text(ar: "طريقة المعالجة", en: "Processing Mode"))
+                                .font(.headline.weight(.bold))
+                            Text(preferences.text(ar: "كل خيار يشتغل فعليًا على الملف.", en: "Each option performs a real file operation."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "slider.horizontal.3")
+                            .foregroundStyle(IrfaaliTheme.accent)
+                    }
+
                     ForEach(OptimizationPreset.all) { preset in
                         Button {
-                            withAnimation(.snappy) { model.selectedPreset = preset }
+                            withAnimation(preferences.animationsEnabled ? .snappy : nil) {
+                                model.selectedPreset = preset
+                            }
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: model.selectedPreset == preset ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(model.selectedPreset == preset ? IrfaaliTheme.accent : .secondary)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(preset.title).font(.subheadline.bold()).foregroundStyle(.primary)
-                                    Text(preset.subtitle).font(.caption).foregroundStyle(.secondary)
+                                    Text(presetTitle(preset))
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.primary)
+                                    Text(presetSubtitle(preset))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer()
                             }
@@ -171,9 +238,15 @@ struct StudioView: View {
                     if model.isProcessing {
                         VStack(alignment: .leading, spacing: 8) {
                             ProgressView(value: model.progress).tint(IrfaaliTheme.accent)
-                            Text("\(Int(model.progress * 100))% · تقدم التصدير الفعلي")
-                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                                .contentTransition(.numericText())
+                            HStack {
+                                Text(preferences.text(ar: "قاعدين نضبطه…", en: "Processing…"))
+                                Spacer()
+                                Text("\(Int(model.progress * 100))%")
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                         }
                     } else {
                         Button {
@@ -183,7 +256,7 @@ struct StudioView: View {
                                     let record = ProcessedVideoRecord(
                                         sourceFileName: info.fileName,
                                         outputURL: result.url,
-                                        presetName: model.selectedPreset.title,
+                                        presetName: presetTitle(model.selectedPreset),
                                         width: finalInfo.width,
                                         height: finalInfo.height,
                                         fps: finalInfo.sourceFPS,
@@ -194,8 +267,11 @@ struct StudioView: View {
                                 }
                             }
                         } label: {
-                            Label("ابدأ المعالجة", systemImage: "sparkles.rectangle.stack.fill")
-                                .frame(maxWidth: .infinity)
+                            Label(
+                                preferences.text(ar: "يلا اضبطه 🔥", en: "Start Processing"),
+                                systemImage: "sparkles.rectangle.stack.fill"
+                            )
+                            .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(PremiumPrimaryButtonStyle())
                     }
@@ -205,13 +281,21 @@ struct StudioView: View {
     }
 
     private func compatibilityRow(_ info: VideoAssetInfo) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: info.isTikTokPostingAPIFPSCompatible && info.isTikTokPostingAPIResolutionCompatible ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(info.isTikTokPostingAPIFPSCompatible && info.isTikTokPostingAPIResolutionCompatible ? IrfaaliTheme.accent : .orange)
+        let compatible = info.isTikTokPostingAPIFPSCompatible && info.isTikTokPostingAPIResolutionCompatible
+        return HStack(spacing: 12) {
+            Image(systemName: compatible ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(compatible ? IrfaaliTheme.accent : .orange)
             VStack(alignment: .leading, spacing: 3) {
-                Text("TikTok Content Posting API").font(.subheadline.bold())
-                Text("المعيار الرسمي الحالي: 23–60fps وأبعاد 360–4096 بكسل لكل محور.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Text("TikTok Content Posting API")
+                    .font(.subheadline.bold())
+                Text(
+                    preferences.text(
+                        ar: "فحص توافق النشر الرسمي: 23–60fps وأبعاد 360–4096 بكسل لكل محور.",
+                        en: "Official posting compatibility check: 23–60fps and 360–4096 pixels per axis."
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
         }
@@ -220,33 +304,42 @@ struct StudioView: View {
     private func successCard(_ outcome: ExportOutcome) -> some View {
         let actual = model.outputInfo?.sourceFPS
         let classification = actual.map { outcome.validatedClassification(actualOutputFPS: $0) } ?? outcome.fpsClassification
+
         return PremiumSurface {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Label("اكتمل وتم التحقق", systemImage: "checkmark.seal.fill")
-                        .font(.headline).foregroundStyle(IrfaaliTheme.accent)
+                    Label(
+                        preferences.text(ar: "تم يا بطل ✨", en: "Done & Verified"),
+                        systemImage: "checkmark.seal.fill"
+                    )
+                    .font(.headline.bold())
+                    .foregroundStyle(IrfaaliTheme.accent)
                     Spacer()
                     if model.outputInfo != nil {
                         Text("VERIFIED")
-                            .font(.caption2.bold()).tracking(1.2)
+                            .font(.caption2.bold())
+                            .tracking(1.2)
                             .foregroundStyle(IrfaaliTheme.accent)
                     }
                 }
 
-                Text(classification.title).font(.title3.bold())
-                Text(classification.detail).font(.caption).foregroundStyle(.secondary)
+                Text(classification.title)
+                    .font(.title3.bold())
+                Text(classification.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 if let source = model.info, let output = model.outputInfo {
                     HStack(spacing: 10) {
                         ComparisonColumn(
-                            title: "قبل",
+                            title: preferences.text(ar: "قبل", en: "Before"),
                             resolution: "\(source.width)×\(source.height)",
                             fps: IrfaaliFormatters.fps(source.sourceFPS),
                             codec: source.videoCodec,
                             bitrate: IrfaaliFormatters.bitrate(source.estimatedBitrate)
                         )
                         ComparisonColumn(
-                            title: "بعد",
+                            title: preferences.text(ar: "بعد", en: "After"),
                             resolution: "\(output.width)×\(output.height)",
                             fps: IrfaaliFormatters.fps(output.sourceFPS),
                             codec: output.videoCodec,
@@ -273,7 +366,8 @@ struct StudioView: View {
 
                 if case .failed(let message) = model.saveState {
                     Label(message, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.orange)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
             }
         }
@@ -283,22 +377,58 @@ struct StudioView: View {
     private var saveButtonLabel: some View {
         switch model.saveState {
         case .idle:
-            Label("حفظ في الصور", systemImage: "square.and.arrow.down")
+            Label(preferences.text(ar: "احفظه بالصور", en: "Save to Photos"), systemImage: "square.and.arrow.down")
                 .frame(maxWidth: .infinity)
         case .saving:
-            HStack { ProgressView(); Text("جاري الحفظ…") }
-                .frame(maxWidth: .infinity)
+            HStack {
+                ProgressView()
+                Text(preferences.text(ar: "ثواني…", en: "Saving…"))
+            }
+            .frame(maxWidth: .infinity)
         case .saved:
-            Label("تم الحفظ", systemImage: "checkmark")
+            Label(preferences.text(ar: "وصل عندك ✅", en: "Saved"), systemImage: "checkmark")
                 .frame(maxWidth: .infinity)
         case .failed:
-            Label("إعادة الحفظ", systemImage: "arrow.clockwise")
+            Label(preferences.text(ar: "جرّب الحفظ مرة ثانية", en: "Try Again"), systemImage: "arrow.clockwise")
                 .frame(maxWidth: .infinity)
         }
     }
 
+    private func presetTitle(_ preset: OptimizationPreset) -> String {
+        switch preset.id {
+        case "tiktok":
+            preferences.text(ar: "تيك توك · مضبوط", en: "TikTok · Recommended")
+        case "hevc":
+            preferences.text(ar: "HEVC · جودة عالية", en: "HEVC · High Quality")
+        default:
+            preferences.text(ar: "نفس الأصل", en: "Keep Original")
+        }
+    }
+
+    private func presetSubtitle(_ preset: OptimizationPreset) -> String {
+        switch preset.id {
+        case "tiktok":
+            preferences.text(
+                ar: "H.264 مع حد 60fps للنسخة المتوافقة مع النشر الرسمي.",
+                en: "H.264 with a 60fps cap for official posting compatibility."
+            )
+        case "hevc":
+            preferences.text(
+                ar: "HEVC بجودة عالية مع الحفاظ على إيقاع المصدر الحقيقي.",
+                en: "High-quality HEVC while preserving the source cadence."
+            )
+        default:
+            preferences.text(
+                ar: "ننسخ الملف مثل ما هو بدون ادعاء تحسين أو فريمات وهمية.",
+                en: "Copies the file as-is with no fake enhancement or frame-rate claims."
+            )
+        }
+    }
+
     private func audioSummary(_ info: VideoAssetInfo) -> String {
-        guard let codec = info.audioCodec else { return "بدون صوت" }
+        guard let codec = info.audioCodec else {
+            return preferences.text(ar: "بدون صوت", en: "No Audio")
+        }
         let channels = info.audioChannels.map { "\($0)ch" } ?? ""
         let rate = info.audioSampleRate.map { String(format: "%.1fkHz", $0 / 1000) } ?? ""
         return [codec, channels, rate].filter { !$0.isEmpty }.joined(separator: " · ")
@@ -322,6 +452,8 @@ struct StudioView: View {
 }
 
 private struct ComparisonColumn: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let title: String
     let resolution: String
     let fps: String
@@ -338,31 +470,48 @@ private struct ComparisonColumn: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(
+            colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.68),
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
     }
 }
 
 private struct PremiumPrimaryButtonStyle: ButtonStyle {
+    @EnvironmentObject private var preferences: AppPreferences
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.bold())
             .padding(.horizontal, 16)
             .frame(minHeight: 50)
-            .background(IrfaaliTheme.accent.opacity(configuration.isPressed ? 0.72 : 0.92), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(IrfaaliTheme.accent.opacity(configuration.isPressed ? 0.72 : 0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(Color.black)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
-            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.975 : 1)
+            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.15 : 0), value: configuration.isPressed)
     }
 }
 
 private struct PremiumSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var preferences: AppPreferences
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.bold())
             .padding(.horizontal, 14)
             .frame(minHeight: 50)
-            .background(.white.opacity(configuration.isPressed ? 0.10 : 0.065), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.white.opacity(0.1)) }
+            .background(
+                colorScheme == .dark
+                    ? Color.white.opacity(configuration.isPressed ? 0.11 : 0.065)
+                    : Color.white.opacity(configuration.isPressed ? 0.92 : 0.72),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.07))
+            }
             .foregroundStyle(.primary)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.975 : 1)
     }
 }
