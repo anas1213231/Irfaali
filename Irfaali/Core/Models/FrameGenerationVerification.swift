@@ -7,16 +7,16 @@ struct FrameGenerationVerification: Equatable, Sendable {
     }
 
     enum Failure: Equatable, Sendable, CustomStringConvertible {
-        case noGeneratedFrames
-        case insufficientGeneratedFrames(expectedMinimum: Int, actual: Int)
+        case noIntermediateFrames
+        case insufficientIntermediateFrames(expectedMinimum: Int, actual: Int)
         case outputFPSMismatch(expected: Double, actual: Double)
 
         var description: String {
             switch self {
-            case .noGeneratedFrames:
-                return "No synthesized frames were produced."
-            case .insufficientGeneratedFrames(let expectedMinimum, let actual):
-                return "Expected at least \(expectedMinimum) synthesized frames, got \(actual)."
+            case .noIntermediateFrames:
+                return "No synthesized or cut-safe cadence frames were produced."
+            case .insufficientIntermediateFrames(let expectedMinimum, let actual):
+                return "Expected at least \(expectedMinimum) intermediate cadence frames, got \(actual)."
             case .outputFPSMismatch(let expected, let actual):
                 return String(format: "Expected %.3f FPS, analyzer reported %.3f FPS.", expected, actual)
             }
@@ -25,6 +25,7 @@ struct FrameGenerationVerification: Equatable, Sendable {
 
     let sourceFrameCount: Int
     let generatedFrameCount: Int
+    let sceneCutFallbackFrameCount: Int
     let expectedFPS: Double
     let actualFPS: Double
     let status: Status
@@ -34,29 +35,37 @@ struct FrameGenerationVerification: Equatable, Sendable {
         return false
     }
 
+    var totalIntermediateFrameCount: Int {
+        generatedFrameCount + sceneCutFallbackFrameCount
+    }
+
     static func verify2x(
         sourceFrameCount: Int,
         generatedFrameCount: Int,
+        sceneCutFallbackFrameCount: Int = 0,
         expectedFPS: Double,
         actualFPS: Double
     ) -> FrameGenerationVerification {
         var failures: [Failure] = []
+        let totalIntermediate = generatedFrameCount + sceneCutFallbackFrameCount
 
-        if generatedFrameCount <= 0 {
-            failures.append(.noGeneratedFrames)
+        if sourceFrameCount > 1, totalIntermediate <= 0 {
+            failures.append(.noIntermediateFrames)
         }
 
-        // With N decoded source frames, a complete 2× run can synthesize N-1
-        // midpoint frames. Allow a tiny tail tolerance for sources whose final
-        // decode sample is intentionally dropped by the decoder/container.
+        // With N decoded source frames, a complete 2× run produces N-1 midpoint
+        // cadence samples. Most gaps must be genuine motion synthesis. A hard edit is
+        // the deliberate exception: the scene-cut detector inserts a separately
+        // counted temporal hold to avoid cross-shot ghosting and never reports that
+        // hold as an AI-generated frame.
         let expectedMidpoints = max(sourceFrameCount - 1, 0)
         let toleratedMissingTail = sourceFrameCount >= 20 ? 2 : 0
-        let minimumGenerated = max(expectedMidpoints - toleratedMissingTail, 0)
-        if generatedFrameCount < minimumGenerated {
+        let minimumIntermediate = max(expectedMidpoints - toleratedMissingTail, 0)
+        if totalIntermediate < minimumIntermediate {
             failures.append(
-                .insufficientGeneratedFrames(
-                    expectedMinimum: minimumGenerated,
-                    actual: generatedFrameCount
+                .insufficientIntermediateFrames(
+                    expectedMinimum: minimumIntermediate,
+                    actual: totalIntermediate
                 )
             )
         }
@@ -71,6 +80,7 @@ struct FrameGenerationVerification: Equatable, Sendable {
         return FrameGenerationVerification(
             sourceFrameCount: sourceFrameCount,
             generatedFrameCount: generatedFrameCount,
+            sceneCutFallbackFrameCount: sceneCutFallbackFrameCount,
             expectedFPS: expectedFPS,
             actualFPS: actualFPS,
             status: failures.isEmpty ? .passed : .failed(failures)
