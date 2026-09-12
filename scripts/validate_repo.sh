@@ -2,7 +2,7 @@
 set -euo pipefail
 [ -f project.yml ]
 [ -f Irfaali/App/IrfaaliApp.swift ]
-[ -f Irfaali/Resources/AppIconSource.b64 ]
+[ -f Irfaali/Resources/AppIconSource.jpg ]
 for file in $(find Irfaali IrfaaliTests -name '*.swift' -print); do
   swiftc -frontend -parse "$file" >/dev/null
 done
