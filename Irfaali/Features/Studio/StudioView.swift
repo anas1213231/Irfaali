@@ -104,8 +104,8 @@ struct StudioView: View {
 
                         Text(
                             preferences.text(
-                                ar: "نفحص المصدر أول، وبعدها أنت تتحكم بالدقة والفريمات والترميز. كل نتيجة نرجع نفحصها بعد التصدير.",
-                                en: "We inspect the source first, then you control resolution, frame rate and codec. Every export is verified again after processing."
+                                ar: "نفحص المصدر أول، وبعدها أنت تتحكم بالدقة والفريمات والترميز والتحسين. كل نتيجة نرجع نفحصها بعد التصدير.",
+                                en: "We inspect the source first, then you control resolution, frame rate, codec and enhancement. Every export is verified again after processing."
                             )
                         )
                         .font(.subheadline.weight(.medium))
@@ -328,7 +328,7 @@ struct StudioView: View {
                         settingChoice(
                             title: frameRate.title(isArabic: preferences.isArabic),
                             selected: model.settings.frameRate == frameRate,
-                            enabled: !needsAI,
+                            enabled: true,
                             badge: needsAI ? "AI" : nil
                         ) {
                             model.settings.frameRate = frameRate
@@ -352,6 +352,27 @@ struct StudioView: View {
                             model.settings.codec = codec
                         }
                     }
+                }
+
+                settingsDivider
+
+                settingHeader(icon: "wand.and.rays", ar: "تحسين الصورة", en: "Image Enhancement")
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 8)], spacing: 8) {
+                    ForEach(VideoEnhancementSettings.Mode.allCases) { mode in
+                        settingChoice(
+                            title: mode.title(isArabic: preferences.isArabic),
+                            selected: model.enhancement.mode == mode,
+                            enabled: true,
+                            badge: mode == .smart ? "AUTO" : nil
+                        ) {
+                            model.applyEnhancementMode(mode)
+                        }
+                    }
+                }
+
+                if model.enhancement.isEnabled {
+                    enhancementControls
                 }
 
                 outputTargetCard(info)
@@ -450,6 +471,81 @@ struct StudioView: View {
         .disabled(!enabled)
     }
 
+    private var enhancementControls: some View {
+        VStack(spacing: 12) {
+            enhancementSlider(
+                icon: "drop.degreesign",
+                ar: "تنظيف التشويش",
+                en: "Noise Cleanup",
+                keyPath: \VideoEnhancementSettings.denoise
+            )
+            enhancementSlider(
+                icon: "viewfinder",
+                ar: "استرجاع التفاصيل",
+                en: "Detail Recovery",
+                keyPath: \VideoEnhancementSettings.detailRecovery
+            )
+            enhancementSlider(
+                icon: "scope",
+                ar: "الحدة",
+                en: "Sharpening",
+                keyPath: \VideoEnhancementSettings.sharpening
+            )
+            enhancementSlider(
+                icon: "circle.lefthalf.filled",
+                ar: "حيوية اللون",
+                en: "Color Boost",
+                keyPath: \VideoEnhancementSettings.colorBoost
+            )
+
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "checkmark.shield.fill")
+                    .foregroundStyle(IrfaaliTheme.accent)
+                Text(
+                    preferences.text(
+                        ar: "هذي معالجة فعلية على كل فريم باستخدام Core Image. إذا حركت أي سلايدر يتحول الوضع إلى يدوي تلقائي.",
+                        en: "These controls run a real per-frame Core Image pass. Moving any slider switches the profile to Custom automatically."
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .background(IrfaaliTheme.accent.opacity(0.065), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private func enhancementSlider(
+        icon: String,
+        ar: String,
+        en: String,
+        keyPath: WritableKeyPath<VideoEnhancementSettings, Double>
+    ) -> some View {
+        let value = model.enhancement[keyPath: keyPath]
+
+        return VStack(spacing: 7) {
+            HStack {
+                Label(preferences.text(ar: ar, en: en), systemImage: icon)
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text("\(Int((value * 100).rounded()))%")
+                    .font(.caption.monospacedDigit().bold())
+                    .foregroundStyle(IrfaaliTheme.accent)
+                    .contentTransition(.numericText())
+            }
+
+            Slider(
+                value: Binding(
+                    get: { model.enhancement[keyPath: keyPath] },
+                    set: { model.updateEnhancement(keyPath, value: $0) }
+                ),
+                in: 0...1
+            )
+            .tint(IrfaaliTheme.accent)
+        }
+    }
+
     private func aiFrameNotice(_ info: VideoAssetInfo) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "brain.head.profile")
@@ -462,8 +558,8 @@ struct StudioView: View {
 
                 Text(
                     preferences.text(
-                        ar: "المصدر \(Int(info.sourceFPS.rounded())) FPS. رفعه لفريمات أعلى يحتاج Frame Generation حقيقي. ما راح نكرر نفس الفريم ونكتب لك رقم وهمي.",
-                        en: "The source is \(Int(info.sourceFPS.rounded())) FPS. Increasing it requires real frame generation; Irfaali will not duplicate frames and pretend otherwise."
+                        ar: "المصدر \(Int(info.sourceFPS.rounded())) FPS. اخترت فريمات أعلى، وهذا يحتاج Frame Generation حقيقي. الخيار ظاهر لك من الحين لكن التصدير يتوقف لين نوصل محرك التوليد الحقيقي — ما نكرر نفس الفريم ونكتب رقم وهمي.",
+                        en: "The source is \(Int(info.sourceFPS.rounded())) FPS and you selected a higher target. That requires real frame generation. The target stays visible, but export is blocked until the real generation engine is wired — no duplicated-frame tricks."
                     )
                 )
                 .font(.caption)
@@ -497,9 +593,15 @@ struct StudioView: View {
                 Text("\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps))")
                     .font(.headline.monospacedDigit())
 
-                Text(model.settings.codec.title(isArabic: preferences.isArabic))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text(model.settings.codec.title(isArabic: preferences.isArabic))
+                    if model.enhancement.isEnabled {
+                        Text("•")
+                        Text(model.enhancement.mode.title(isArabic: preferences.isArabic))
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -511,8 +613,13 @@ struct StudioView: View {
     private var processingProgress: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(preferences.text(ar: "قاعدين نضبطه…", en: "Processing…"))
-                    .font(.subheadline.bold())
+                Text(
+                    preferences.text(
+                        ar: model.processingStageTextArabic,
+                        en: model.processingStageTextEnglish
+                    )
+                )
+                .font(.subheadline.bold())
                 Spacer()
                 Text("\(Int(model.progress * 100))%")
                     .font(.subheadline.monospacedDigit().bold())
@@ -533,7 +640,9 @@ struct StudioView: View {
     private func processingSummary(_ info: VideoAssetInfo) -> String {
         let size = model.settings.targetSize(for: info)
         let fps = model.settings.effectiveFPS(for: info)
-        return "\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps)) · \(model.settings.codec.title(isArabic: preferences.isArabic))"
+        let base = "\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps)) · \(model.settings.codec.title(isArabic: preferences.isArabic))"
+        guard model.enhancement.isEnabled else { return base }
+        return "\(base) · \(model.enhancement.mode.title(isArabic: preferences.isArabic))"
     }
 
     private func compatibilityRow(_ info: VideoAssetInfo) -> some View {
