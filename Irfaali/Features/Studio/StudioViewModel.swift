@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 final class StudioViewModel: ObservableObject {
@@ -12,7 +12,7 @@ final class StudioViewModel: ObservableObject {
 
     @Published private(set) var info: VideoAssetInfo?
     @Published private(set) var outputInfo: VideoAssetInfo?
-    @Published var selectedPreset: OptimizationPreset = .tiktok
+    @Published var settings: VideoProcessingSettings = .standard
     @Published private(set) var isAnalyzing = false
     @Published private(set) var isProcessing = false
     @Published private(set) var progress: Double = 0
@@ -25,6 +25,16 @@ final class StudioViewModel: ObservableObject {
     private let exporter = VideoExportService()
     private let photoSaver = PhotoLibrarySaver()
 
+    var canProcess: Bool {
+        guard let info else { return false }
+        return !settings.needsFrameGeneration(for: info) && !isAnalyzing && !isProcessing
+    }
+
+    var needsFrameGeneration: Bool {
+        guard let info else { return false }
+        return settings.needsFrameGeneration(for: info)
+    }
+
     func importVideo(url: URL) async {
         isAnalyzing = true
         errorMessage = nil
@@ -33,12 +43,20 @@ final class StudioViewModel: ObservableObject {
         outputInfo = nil
         saveState = .idle
         defer { isAnalyzing = false }
+
         do {
-            info = try await analyzer.analyze(url: url)
+            let analyzed = try await analyzer.analyze(url: url)
+            info = analyzed
+            settings = VideoProcessingSettings.recommended(for: analyzed)
         } catch {
             info = nil
             errorMessage = error.localizedDescription
         }
+    }
+
+    func applyRecommendedSettings() {
+        guard let info else { return }
+        settings = VideoProcessingSettings.recommended(for: info)
     }
 
     func process() async -> ExportOutcome? {
@@ -50,16 +68,22 @@ final class StudioViewModel: ObservableObject {
         outputInfo = nil
         saveState = .idle
         defer { isProcessing = false }
+
         do {
-            let result = try await exporter.export(info: info, preset: selectedPreset) { [weak self] value in
-                Task { @MainActor in self?.progress = min(max(value, 0), 1) }
+            let result = try await exporter.export(info: info, settings: settings) { [weak self] value in
+                Task { @MainActor in
+                    self?.progress = min(max(value, 0), 1)
+                }
             }
+
             lastOutcome = result
+
             do {
                 outputInfo = try await analyzer.analyze(url: result.url)
             } catch {
                 validationMessage = "تم إنشاء الملف، لكن تعذر التحقق التقني بعد التصدير: \(error.localizedDescription)"
             }
+
             return result
         } catch {
             errorMessage = error.localizedDescription
@@ -70,6 +94,7 @@ final class StudioViewModel: ObservableObject {
     func saveOutputToPhotos() async {
         guard let url = lastOutcome?.url else { return }
         saveState = .saving
+
         do {
             try await photoSaver.saveVideo(at: url)
             saveState = .saved
