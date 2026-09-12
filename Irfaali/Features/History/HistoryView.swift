@@ -88,22 +88,23 @@ struct HistoryView: View {
                         playingRecord = record
                     } label: {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [IrfaaliTheme.emerald.opacity(0.9), IrfaaliTheme.ink],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                            VideoThumbnailView(url: record.outputURL, isAvailable: record.outputExists)
+
                             Circle()
                                 .fill(.ultraThinMaterial)
                                 .frame(width: 38, height: 38)
+
                             Image(systemName: record.outputExists ? "play.fill" : "exclamationmark.triangle.fill")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(record.outputExists ? IrfaaliTheme.accent : .orange)
+                                .foregroundStyle(record.outputExists ? .white : .orange)
+                                .offset(x: record.outputExists ? 1 : 0)
                         }
-                        .frame(width: 76, height: 76)
+                        .frame(width: 84, height: 84)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(.white.opacity(0.10), lineWidth: 1)
+                        }
                     }
                     .buttonStyle(.plain)
                     .disabled(!record.outputExists)
@@ -195,8 +196,10 @@ struct HistoryView: View {
     }
 
     private func delete(_ record: ProcessedVideoRecord) {
+        let url = record.outputURL
+        VideoThumbnailStore.shared.removeThumbnail(for: url)
         if record.outputExists {
-            try? FileManager.default.removeItem(at: record.outputURL)
+            try? FileManager.default.removeItem(at: url)
         }
         modelContext.delete(record)
         try? modelContext.save()
