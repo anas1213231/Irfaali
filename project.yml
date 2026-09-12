@@ -31,6 +31,9 @@ targets:
         CFBundleDisplayName: ارفعلي
         CFBundleName: Irfaali
         CFBundleDevelopmentRegion: ar
+        NSHumanReadableCopyright: "© 2026 @ucorc. All Rights Reserved."
+        IrfaaliOwner: "@ucorc"
+        IrfaaliContactURL: "https://t.me/ucorc"
         NSPhotoLibraryUsageDescription: يستخدم ارفعلي مكتبة الصور لاختيار الفيديو الذي تريد تحليله ومعالجته.
         NSPhotoLibraryAddUsageDescription: يستخدم ارفعلي مكتبة الصور لحفظ الفيديو الناتج عندما تطلب ذلك.
         UISupportedInterfaceOrientations:

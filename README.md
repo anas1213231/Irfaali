@@ -2,6 +2,14 @@
 
 Production-oriented iPhone video analysis and export engine built with SwiftUI, AVFoundation, SwiftData and Swift Concurrency.
 
+## Owner / Developer
+
+Owner / Developer: **@ucorc**
+
+Telegram: https://t.me/ucorc
+
+Copyright: © 2026 @ucorc. All Rights Reserved.
+
 ## Current executable scope
 
 - Import video from Photos or Files.
@@ -14,6 +22,8 @@ Production-oriented iPhone video analysis and export engine built with SwiftUI, 
 - Save exported video to Photos using real add-only Photo Library authorization, or share with the iOS Share Sheet.
 - Persistent export history with SwiftData.
 - Read-only Experimental Container Lab with explicit native/generated/retimed/timing-only terminology.
+- Video exports remain clean: no developer watermark, logo overlay, intro, or outro is injected into user media.
+- The current product has no StoreKit subscription, paywall, credits/coins, paid codec/FPS tier, export limit, trial gate, or forced ads.
 
 ## Generate the Xcode project
 

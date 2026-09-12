@@ -9,6 +9,8 @@ struct RootView: View {
                 .tabItem { Label("السجل", systemImage: "clock.arrow.circlepath") }
             NavigationStack { ContainerLabView() }
                 .tabItem { Label("المختبر", systemImage: "atom") }
+            NavigationStack { SettingsView() }
+                .tabItem { Label("الإعدادات", systemImage: "gearshape.fill") }
         }
         .tint(IrfaaliTheme.accent)
     }
