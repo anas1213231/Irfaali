@@ -301,11 +301,7 @@ struct StudioView: View {
 
                 settingsDivider
 
-                settingHeader(
-                    icon: "rectangle.expand.vertical",
-                    ar: "الدقة النهائية",
-                    en: "Output Resolution"
-                )
+                settingHeader(icon: "rectangle.expand.vertical", ar: "الدقة النهائية", en: "Output Resolution")
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 76), spacing: 8)], spacing: 8) {
                     ForEach(VideoProcessingSettings.Resolution.allCases) { resolution in
@@ -329,7 +325,7 @@ struct StudioView: View {
                             title: frameRate.title(isArabic: preferences.isArabic),
                             selected: model.settings.frameRate == frameRate,
                             enabled: true,
-                            badge: needsAI ? "AI" : nil
+                            badge: needsAI ? "AI 2×" : nil
                         ) {
                             model.settings.frameRate = frameRate
                         }
@@ -473,30 +469,10 @@ struct StudioView: View {
 
     private var enhancementControls: some View {
         VStack(spacing: 12) {
-            enhancementSlider(
-                icon: "drop.degreesign",
-                ar: "تنظيف التشويش",
-                en: "Noise Cleanup",
-                keyPath: \VideoEnhancementSettings.denoise
-            )
-            enhancementSlider(
-                icon: "viewfinder",
-                ar: "استرجاع التفاصيل",
-                en: "Detail Recovery",
-                keyPath: \VideoEnhancementSettings.detailRecovery
-            )
-            enhancementSlider(
-                icon: "scope",
-                ar: "الحدة",
-                en: "Sharpening",
-                keyPath: \VideoEnhancementSettings.sharpening
-            )
-            enhancementSlider(
-                icon: "circle.lefthalf.filled",
-                ar: "حيوية اللون",
-                en: "Color Boost",
-                keyPath: \VideoEnhancementSettings.colorBoost
-            )
+            enhancementSlider(icon: "drop.degreesign", ar: "تنظيف التشويش", en: "Noise Cleanup", keyPath: \VideoEnhancementSettings.denoise)
+            enhancementSlider(icon: "viewfinder", ar: "استرجاع التفاصيل", en: "Detail Recovery", keyPath: \VideoEnhancementSettings.detailRecovery)
+            enhancementSlider(icon: "scope", ar: "الحدة", en: "Sharpening", keyPath: \VideoEnhancementSettings.sharpening)
+            enhancementSlider(icon: "circle.lefthalf.filled", ar: "حيوية اللون", en: "Color Boost", keyPath: \VideoEnhancementSettings.colorBoost)
 
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "checkmark.shield.fill")
@@ -547,54 +523,125 @@ struct StudioView: View {
     }
 
     private func aiFrameNotice(_ info: VideoAssetInfo) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "brain.head.profile")
-                .font(.title3)
-                .foregroundStyle(.orange)
+        let requestedFPS = model.settings.frameRate.requestedFPS ?? info.sourceFPS
+        let plan = model.frameGenerationPlan
+        let readiness = model.frameGenerationReadiness
+        let isSupported2x = plan?.strategy == .opticalFlow2x
+        let tone: Color = readiness?.level == .blocked ? .red : .orange
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(preferences.text(ar: "هنا نوقف الغش 😎", en: "No fake frames here."))
-                    .font(.subheadline.bold())
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(tone.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "brain.head.profile.fill")
+                        .font(.title3)
+                        .foregroundStyle(tone)
+                }
 
-                Text(
-                    preferences.text(
-                        ar: "المصدر \(Int(info.sourceFPS.rounded())) FPS. اخترت فريمات أعلى، وهذا يحتاج Frame Generation حقيقي. الخيار ظاهر لك من الحين لكن التصدير يتوقف لين نوصل محرك التوليد الحقيقي — ما نكرر نفس الفريم ونكتب رقم وهمي.",
-                        en: "The source is \(Int(info.sourceFPS.rounded())) FPS and you selected a higher target. That requires real frame generation. The target stays visible, but export is blocked until the real generation engine is wired — no duplicated-frame tricks."
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(preferences.text(ar: "Frame Generation حقيقي 🧠⚡️", en: "Real Frame Generation 🧠⚡️"))
+                        .font(.subheadline.bold())
+
+                    Text(
+                        preferences.text(
+                            ar: isSupported2x
+                                ? "المسار \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) مبني فعلًا: Vision Optical Flow + Metal Motion Warp + ترميز فريمات جديدة. ما فيه تكرار فريمات."
+                                : "المسار \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) مو من مسارات 2× المدعومة في v1، لذلك ما راح نزور النتيجة.",
+                            en: isSupported2x
+                                ? "The \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) path is genuinely implemented with Vision optical flow, Metal motion warp and newly encoded frames — no duplication trick."
+                                : "The \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) path is not a supported 2× v1 route, so Irfaali will not fake the result."
+                        )
                     )
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
+
+            HStack(spacing: 8) {
+                generationStatusPill(
+                    text: isSupported2x ? "ENGINE WIRED" : "UNSUPPORTED RATIO",
+                    systemImage: isSupported2x ? "cpu.fill" : "xmark.circle.fill",
+                    tone: tone
+                )
+
+                if let readiness {
+                    generationStatusPill(
+                        text: readiness.level == .ready ? "DEVICE READY" : readiness.level == .caution ? "DEVICE CHECK" : "DEVICE BLOCK",
+                        systemImage: readiness.level == .blocked ? "exclamationmark.triangle.fill" : "iphone.gen3",
+                        tone: readiness.level == .ready ? IrfaaliTheme.accent : tone
+                    )
+                }
+
+                generationStatusPill(text: "QA LOCK", systemImage: "lock.fill", tone: .secondary)
+            }
+
+            if let readiness, !readiness.reasons.isEmpty {
+                Text(readiness.reasons.map(\.description).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(readiness.level == .blocked ? .red : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text(
+                preferences.text(
+                    ar: "المحرك مربوط داخليًا، لكن زر التصدير العالي مقفول مؤقتًا لين نخلص اختبار الآيفون الحقيقي: جودة الحركة، الحرارة، الذاكرة وتزامن الصوت.",
+                    en: "The engine is wired internally, but public high-FPS export stays QA-locked until real-iPhone motion quality, thermals, memory and audio-sync checks pass."
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
-        .padding(13)
-        .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(14)
+        .background(tone.opacity(0.07), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(tone.opacity(0.16), lineWidth: 1)
+        }
+    }
+
+    private func generationStatusPill(text: String, systemImage: String, tone: Color) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(tone.opacity(0.09), in: Capsule())
+            .foregroundStyle(tone)
     }
 
     private func outputTargetCard(_ info: VideoAssetInfo) -> some View {
         let size = model.settings.targetSize(for: info)
-        let fps = model.settings.effectiveFPS(for: info)
+        let requestedFPS = model.settings.frameRate.requestedFPS ?? info.sourceFPS
+        let needsGeneration = requestedFPS > info.sourceFPS + 0.5
 
         return HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(IrfaaliTheme.accent.opacity(0.11))
-                Image(systemName: "checkmark.seal.fill")
+                Image(systemName: needsGeneration ? "sparkles.rectangle.stack.fill" : "checkmark.seal.fill")
                     .font(.title2)
                     .foregroundStyle(IrfaaliTheme.accent)
             }
             .frame(width: 52, height: 52)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(preferences.text(ar: "الهدف الحقيقي", en: "Verified Target"))
+                Text(preferences.text(ar: needsGeneration ? "الهدف المطلوب" : "الهدف الحقيقي", en: needsGeneration ? "Requested Target" : "Verified Target"))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
 
-                Text("\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps))")
+                Text("\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(requestedFPS))")
                     .font(.headline.monospacedDigit())
 
                 HStack(spacing: 6) {
                     Text(model.settings.codec.title(isArabic: preferences.isArabic))
+                    if needsGeneration {
+                        Text("•")
+                        Text("AI 2×")
+                    }
                     if model.enhancement.isEnabled {
                         Text("•")
                         Text(model.enhancement.mode.title(isArabic: preferences.isArabic))
@@ -611,35 +658,94 @@ struct StudioView: View {
     }
 
     private var processingProgress: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(
-                    preferences.text(
-                        ar: model.processingStageTextArabic,
-                        en: model.processingStageTextEnglish
-                    )
-                )
-                .font(.subheadline.bold())
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(IrfaaliTheme.accent.opacity(0.12), lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: max(0.04, model.progress))
+                        .stroke(IrfaaliTheme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Image(systemName: processingStageIcon)
+                        .font(.headline.bold())
+                        .foregroundStyle(IrfaaliTheme.accent)
+                }
+                .frame(width: 52, height: 52)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
+                        .font(.subheadline.bold())
+                    Text(processingStageCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer()
+
                 Text("\(Int(model.progress * 100))%")
-                    .font(.subheadline.monospacedDigit().bold())
+                    .font(.headline.monospacedDigit().bold())
+                    .foregroundStyle(IrfaaliTheme.accent)
                     .contentTransition(.numericText())
             }
 
             ProgressView(value: model.progress)
                 .tint(IrfaaliTheme.accent)
 
-            Text(preferences.text(ar: "لا تطلع من العملية لين نتحقق من الملف النهائي.", en: "The final file will be analyzed again before we call it done."))
+            if model.generatedFrameCount > 0 {
+                Label(
+                    preferences.text(
+                        ar: "ولدنا \(model.generatedFrameCount) فريم جديد فعليًا",
+                        en: "\(model.generatedFrameCount) new frames synthesized"
+                    ),
+                    systemImage: "square.stack.3d.up.fill"
+                )
+                .font(.caption.bold())
+                .foregroundStyle(IrfaaliTheme.accent)
+            }
+
+            Text(preferences.text(ar: "ما نعتمد النتيجة لين نحلل الملف النهائي ونتأكد منه.", en: "The result is not accepted until the final file is analyzed and verified."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(14)
-        .background(IrfaaliTheme.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(IrfaaliTheme.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var processingStageIcon: String {
+        switch model.processingStage {
+        case .idle: return "bolt.fill"
+        case .preparing: return "gearshape.2.fill"
+        case .exporting: return "film.stack.fill"
+        case .generatingFrames: return "brain.head.profile.fill"
+        case .enhancing: return "wand.and.stars"
+        case .verifying: return "checkmark.shield.fill"
+        case .complete: return "checkmark.seal.fill"
+        }
+    }
+
+    private var processingStageCaption: String {
+        switch model.processingStage {
+        case .idle:
+            return preferences.text(ar: "المحرك واقف على أهبة الاستعداد", en: "Engine standing by")
+        case .preparing:
+            return preferences.text(ar: "نجهز المسارات والملف", en: "Preparing tracks and output")
+        case .exporting:
+            return preferences.text(ar: "الدقة والترميز تحت الشغل", en: "Resolution and codec pass")
+        case .generatingFrames:
+            return preferences.text(ar: "Vision + Metal يشتغلون الحين", en: "Vision + Metal are synthesizing motion")
+        case .enhancing:
+            return preferences.text(ar: "تنظيف وتفاصيل على كل فريم", en: "Per-frame cleanup and detail pass")
+        case .verifying:
+            return preferences.text(ar: "نقرأ الناتج من جديد قبل نعتمده", en: "Re-reading output before acceptance")
+        case .complete:
+            return preferences.text(ar: "تم واعتمدنا الملف", en: "Output accepted")
+        }
     }
 
     private func processingSummary(_ info: VideoAssetInfo) -> String {
         let size = model.settings.targetSize(for: info)
-        let fps = model.settings.effectiveFPS(for: info)
+        let fps = model.settings.frameRate.requestedFPS ?? info.sourceFPS
         let base = "\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps)) · \(model.settings.codec.title(isArabic: preferences.isArabic))"
         guard model.enhancement.isEnabled else { return base }
         return "\(base) · \(model.enhancement.mode.title(isArabic: preferences.isArabic))"
@@ -701,6 +807,18 @@ struct StudioView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if let verification = model.frameGenerationVerification, verification.passed {
+                    Label(
+                        preferences.text(
+                            ar: "Frame Generation Verified · \(verification.generatedFrameCount) فريم جديد",
+                            en: "Frame Generation Verified · \(verification.generatedFrameCount) new frames"
+                        ),
+                        systemImage: "checkmark.shield.fill"
+                    )
+                    .font(.caption.bold())
+                    .foregroundStyle(IrfaaliTheme.accent)
+                }
+
                 if let source = model.info, let output = model.outputInfo {
                     HStack(spacing: 10) {
                         ComparisonColumn(
@@ -750,32 +868,20 @@ struct StudioView: View {
     private var saveButtonLabel: some View {
         switch model.saveState {
         case .idle:
-            Label(
-                preferences.text(ar: "احفظه بالصور", en: "Save to Photos"),
-                systemImage: "square.and.arrow.down"
-            )
-            .frame(maxWidth: .infinity)
-
+            Label(preferences.text(ar: "احفظه بالصور", en: "Save to Photos"), systemImage: "square.and.arrow.down")
+                .frame(maxWidth: .infinity)
         case .saving:
             HStack {
                 ProgressView()
                 Text(preferences.text(ar: "ثواني…", en: "Saving…"))
             }
             .frame(maxWidth: .infinity)
-
         case .saved:
-            Label(
-                preferences.text(ar: "وصل عندك ✅", en: "Saved"),
-                systemImage: "checkmark"
-            )
-            .frame(maxWidth: .infinity)
-
+            Label(preferences.text(ar: "وصل عندك ✅", en: "Saved"), systemImage: "checkmark")
+                .frame(maxWidth: .infinity)
         case .failed:
-            Label(
-                preferences.text(ar: "جرّب الحفظ مرة ثانية", en: "Try Again"),
-                systemImage: "arrow.clockwise"
-            )
-            .frame(maxWidth: .infinity)
+            Label(preferences.text(ar: "جرّب الحفظ مرة ثانية", en: "Try Again"), systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity)
         }
     }
 
