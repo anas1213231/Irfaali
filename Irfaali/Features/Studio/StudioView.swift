@@ -17,6 +17,7 @@ struct StudioView: View {
                     if model.isAnalyzing { analyzingCard }
                     if let info = model.info { analysisCard(info) }
                     if let outcome = model.lastOutcome { successCard(outcome) }
+                    if let message = model.validationMessage { warningCard(message) }
                     if let message = model.errorMessage { errorCard(message) }
                 }
                 .padding(.horizontal, 16)
@@ -25,6 +26,8 @@ struct StudioView: View {
         }
         .navigationTitle("ارفعلي")
         .navigationBarTitleDisplayMode(.large)
+        .sensoryFeedback(.success, trigger: model.lastOutcome?.url)
+        .sensoryFeedback(.success, trigger: model.saveState == .saved)
         .onChange(of: photoItem) { _, newValue in
             guard let newValue else { return }
             Task {
@@ -135,6 +138,8 @@ struct StudioView: View {
                         MetricTile(icon: "waveform", title: "Video Bitrate", value: IrfaaliFormatters.bitrate(info.estimatedBitrate))
                         MetricTile(icon: "clock", title: "المدة", value: IrfaaliFormatters.duration(info.duration))
                         MetricTile(icon: "internaldrive", title: "الحجم", value: IrfaaliFormatters.byteCount.string(fromByteCount: info.fileSizeBytes))
+                        MetricTile(icon: "shippingbox", title: "الحاوية", value: info.container)
+                        MetricTile(icon: "speaker.wave.2", title: "الصوت", value: audioSummary(info))
                     }
 
                     Divider().overlay(.white.opacity(0.08))
@@ -168,19 +173,21 @@ struct StudioView: View {
                             ProgressView(value: model.progress).tint(IrfaaliTheme.accent)
                             Text("\(Int(model.progress * 100))% · تقدم التصدير الفعلي")
                                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                .contentTransition(.numericText())
                         }
                     } else {
                         Button {
                             Task {
                                 if let result = await model.process() {
+                                    let finalInfo = model.outputInfo ?? info
                                     let record = ProcessedVideoRecord(
                                         sourceFileName: info.fileName,
                                         outputURL: result.url,
                                         presetName: model.selectedPreset.title,
-                                        width: info.width,
-                                        height: info.height,
-                                        fps: result.outputFPS,
-                                        codec: result.codecLabel
+                                        width: finalInfo.width,
+                                        height: finalInfo.height,
+                                        fps: finalInfo.sourceFPS,
+                                        codec: finalInfo.videoCodec
                                     )
                                     modelContext.insert(record)
                                     try? modelContext.save()
@@ -211,18 +218,97 @@ struct StudioView: View {
     }
 
     private func successCard(_ outcome: ExportOutcome) -> some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("اكتمل التصدير", systemImage: "checkmark.seal.fill")
-                    .font(.headline).foregroundStyle(IrfaaliTheme.accent)
-                Text(outcome.fpsClassification.title).font(.title3.bold())
-                Text(outcome.fpsClassification.detail).font(.caption).foregroundStyle(.secondary)
-                ShareLink(item: outcome.url) {
-                    Label("مشاركة الملف", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
+        let actual = model.outputInfo?.sourceFPS
+        let classification = actual.map { outcome.validatedClassification(actualOutputFPS: $0) } ?? outcome.fpsClassification
+        return PremiumSurface {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Label("اكتمل وتم التحقق", systemImage: "checkmark.seal.fill")
+                        .font(.headline).foregroundStyle(IrfaaliTheme.accent)
+                    Spacer()
+                    if model.outputInfo != nil {
+                        Text("VERIFIED")
+                            .font(.caption2.bold()).tracking(1.2)
+                            .foregroundStyle(IrfaaliTheme.accent)
+                    }
                 }
-                .buttonStyle(PremiumSecondaryButtonStyle())
+
+                Text(classification.title).font(.title3.bold())
+                Text(classification.detail).font(.caption).foregroundStyle(.secondary)
+
+                if let source = model.info, let output = model.outputInfo {
+                    HStack(spacing: 10) {
+                        ComparisonColumn(
+                            title: "قبل",
+                            resolution: "\(source.width)×\(source.height)",
+                            fps: IrfaaliFormatters.fps(source.sourceFPS),
+                            codec: source.videoCodec,
+                            bitrate: IrfaaliFormatters.bitrate(source.estimatedBitrate)
+                        )
+                        ComparisonColumn(
+                            title: "بعد",
+                            resolution: "\(output.width)×\(output.height)",
+                            fps: IrfaaliFormatters.fps(output.sourceFPS),
+                            codec: output.videoCodec,
+                            bitrate: IrfaaliFormatters.bitrate(output.estimatedBitrate)
+                        )
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        Task { await model.saveOutputToPhotos() }
+                    } label: {
+                        saveButtonLabel
+                    }
+                    .buttonStyle(PremiumPrimaryButtonStyle())
+                    .disabled(model.saveState == .saving || model.saveState == .saved)
+
+                    ShareLink(item: outcome.url) {
+                        Image(systemName: "square.and.arrow.up")
+                            .frame(width: 48, height: 48)
+                    }
+                    .buttonStyle(PremiumSecondaryButtonStyle())
+                }
+
+                if case .failed(let message) = model.saveState {
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var saveButtonLabel: some View {
+        switch model.saveState {
+        case .idle:
+            Label("حفظ في الصور", systemImage: "square.and.arrow.down")
+                .frame(maxWidth: .infinity)
+        case .saving:
+            HStack { ProgressView(); Text("جاري الحفظ…") }
+                .frame(maxWidth: .infinity)
+        case .saved:
+            Label("تم الحفظ", systemImage: "checkmark")
+                .frame(maxWidth: .infinity)
+        case .failed:
+            Label("إعادة الحفظ", systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func audioSummary(_ info: VideoAssetInfo) -> String {
+        guard let codec = info.audioCodec else { return "بدون صوت" }
+        let channels = info.audioChannels.map { "\($0)ch" } ?? ""
+        let rate = info.audioSampleRate.map { String(format: "%.1fkHz", $0 / 1000) } ?? ""
+        return [codec, channels, rate].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private func warningCard(_ message: String) -> some View {
+        PremiumSurface {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -232,6 +318,27 @@ struct StudioView: View {
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private struct ComparisonColumn: View {
+    let title: String
+    let resolution: String
+    let fps: String
+    let codec: String
+    let bitrate: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.caption.bold()).foregroundStyle(IrfaaliTheme.accent)
+            Text(resolution).font(.subheadline.bold())
+            Text(fps).font(.caption.monospacedDigit())
+            Text(codec).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+            Text(bitrate).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 

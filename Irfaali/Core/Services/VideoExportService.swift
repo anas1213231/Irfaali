@@ -3,9 +3,18 @@ import Foundation
 
 struct ExportOutcome: Sendable {
     let url: URL
+    let sourceFPS: Double
     let outputFPS: Double
-    let fpsClassification: FPSClassification
+    let fpsMode: FPSGenerationMode
     let codecLabel: String
+
+    var fpsClassification: FPSClassification {
+        FrameRateClassifier.classify(sourceFPS: sourceFPS, outputFPS: outputFPS, mode: fpsMode)
+    }
+
+    func validatedClassification(actualOutputFPS: Double) -> FPSClassification {
+        FrameRateClassifier.classify(sourceFPS: sourceFPS, outputFPS: actualOutputFPS, mode: fpsMode)
+    }
 }
 
 final class VideoExportService {
@@ -34,8 +43,9 @@ final class VideoExportService {
             progress(1)
             return ExportOutcome(
                 url: destination,
+                sourceFPS: info.sourceFPS,
                 outputFPS: info.sourceFPS,
-                fpsClassification: FrameRateClassifier.classify(sourceFPS: info.sourceFPS, outputFPS: info.sourceFPS, mode: .preserved),
+                fpsMode: .preserved,
                 codecLabel: info.videoCodec
             )
         }
@@ -88,12 +98,9 @@ final class VideoExportService {
 
         return ExportOutcome(
             url: destination,
+            sourceFPS: info.sourceFPS,
             outputFPS: outputFPS,
-            fpsClassification: FrameRateClassifier.classify(
-                sourceFPS: info.sourceFPS,
-                outputFPS: outputFPS,
-                mode: needsRetiming ? .retimed : .preserved
-            ),
+            fpsMode: needsRetiming ? .retimed : .preserved,
             codecLabel: preset.codec == .hevc ? "H.265 / HEVC" : "H.264 / AVC"
         )
     }

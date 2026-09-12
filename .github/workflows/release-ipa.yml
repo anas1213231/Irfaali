@@ -2,6 +2,11 @@ name: Signed IPA
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["release/signed"]
+
+permissions:
+  contents: write
 
 jobs:
   archive:
@@ -26,14 +31,15 @@ jobs:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
         run: |
           set -euo pipefail
-          for key in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 APPLE_TEAM_ID APP_BUNDLE_ID; do
+          for key in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 IOS_EXPORT_METHOD APPLE_TEAM_ID APP_BUNDLE_ID; do
             if [ -z "${!key:-}" ]; then echo "Missing GitHub secret: $key"; exit 1; fi
           done
-      - name: Install certificate and profile
+      - name: Install certificate and provisioning profile
         shell: bash
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
@@ -43,20 +49,27 @@ jobs:
           set -euo pipefail
           P12="$RUNNER_TEMP/certificate.p12"
           PROFILE="$RUNNER_TEMP/profile.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
           KEYCHAIN="$RUNNER_TEMP/app-signing.keychain-db"
-          echo "$IOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$P12"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          python3 - <<'PY'
+          import base64, os, pathlib
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'certificate.p12').write_bytes(base64.b64decode(os.environ['IOS_CERTIFICATE_P12_BASE64']))
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'profile.mobileprovision').write_bytes(base64.b64decode(os.environ['IOS_PROVISIONING_PROFILE_BASE64']))
+          PY
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import "$P12" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
           security list-keychain -d user -s "$KEYCHAIN"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< "$(security cms -D -i "$PROFILE")")
+          security cms -D -i "$PROFILE" > "$PROFILE_PLIST"
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$PROFILE_PLIST")
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROFILE" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
           echo "PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
-      - name: Archive
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+      - name: Archive signed app
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
@@ -70,11 +83,12 @@ jobs:
             -archivePath "$RUNNER_TEMP/Irfaali.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             CODE_SIGN_STYLE=Manual \
             archive
       - name: Create export options
         env:
+          IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
         run: |
@@ -82,20 +96,35 @@ jobs:
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
-            <key>method</key><string>development</string>
+            <key>method</key><string>$IOS_EXPORT_METHOD</string>
             <key>signingStyle</key><string>manual</string>
             <key>teamID</key><string>$APPLE_TEAM_ID</string>
-            <key>provisioningProfiles</key><dict><key>$APP_BUNDLE_ID</key><string>$PROFILE_UUID</string></dict>
+            <key>provisioningProfiles</key><dict><key>$APP_BUNDLE_ID</key><string>$PROFILE_NAME</string></dict>
           </dict></plist>
           EOF
+          plutil -lint "$RUNNER_TEMP/ExportOptions.plist"
       - name: Export IPA
         run: |
+          set -euo pipefail
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/Irfaali.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          IPA_PATH=$(find "$RUNNER_TEMP/export" -maxdepth 1 -name '*.ipa' -print -quit)
+          test -n "$IPA_PATH"
+          echo "IPA_PATH=$IPA_PATH" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: Irfaali-Signed-IPA
-          path: ${{ runner.temp }}/export/*.ipa
+          path: ${{ env.IPA_PATH }}
           if-no-files-found: error
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="signed-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          gh release create "$TAG" "$IPA_PATH#Irfaali.ipa" \
+            --target "$GITHUB_SHA" \
+            --title "ارفعلي · Signed Build ${GITHUB_RUN_NUMBER}" \
+            --notes "Signed IPA produced by the verified GitHub Actions release pipeline. Export method: ${{ secrets.IOS_EXPORT_METHOD }}."

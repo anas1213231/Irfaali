@@ -22,6 +22,9 @@ targets:
     platform: iOS
     sources:
       - path: Irfaali
+        excludes:
+          - Resources/AppIconSource.jpg
+          - Resources/AppIconSource.b64
     info:
       path: Irfaali/Resources/Info.plist
       properties:
