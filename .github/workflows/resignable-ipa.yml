@@ -33,7 +33,7 @@ jobs:
           xcodebuild \
             -project Irfaali.xcodeproj \
             -scheme Irfaali \
-            -configuration Release \
+            -configuration Debug \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
             CODE_SIGNING_ALLOWED=NO \
@@ -61,11 +61,8 @@ jobs:
           set -euo pipefail
           APP="$PWD/build/DerivedData/Build/Products/Release-iphoneos/Irfaali.app"
           test -d "$APP"
-
-          # Remove only signing artifacts. Keep app code, frameworks, plug-ins and Swift libraries intact.
           find "$APP" -type d -name _CodeSignature -prune -exec rm -rf {} +
           find "$APP" -type f -name embedded.mobileprovision -delete
-
           mkdir -p package/Payload
           cp -R "$APP" package/Payload/Irfaali.app
 
@@ -110,7 +107,6 @@ jobs:
             exit 1
           fi
 
-          # These sensitive/profile-derived entitlements must not be hard-coded for the app.
           for key in application-identifier keychain-access-groups get-task-allow aps-environment com.apple.developer.associated-domains com.apple.developer.icloud-services com.apple.security.application-groups; do
             if grep -R --exclude-dir=.git --exclude='*.yml' --exclude='*.yaml' -F "$key" Irfaali Irfaali.xcodeproj >/dev/null 2>&1; then
               echo "Unexpected hard-coded entitlement key: $key"
@@ -135,7 +131,6 @@ jobs:
           VALIDATE="$PWD/validation"
           rm -rf "$VALIDATE"
           mkdir -p "$VALIDATE"
-
           unzip -t "$IPA"
           unzip -q "$IPA" -d "$VALIDATE"
 
@@ -167,7 +162,6 @@ jobs:
             exit 1
           fi
 
-          # Re-signable package must not contain a stale signature/profile.
           if find "$APP" -type d -name _CodeSignature -print -quit | grep -q .; then
             echo "Unexpected code signature found"
             exit 1
@@ -176,8 +170,6 @@ jobs:
             echo "Unexpected embedded provisioning profile found"
             exit 1
           fi
-
-          # Do not ship tests, dSYMs, temporary files or credential/profile files in the IPA.
           if find "$VALIDATE/Payload" \( -name '*.xctest' -o -name '*.dSYM' -o -name '*.p12' -o -name '*.pfx' -o -name '*.mobileprovision' -o -name '*.key' \) -print -quit | grep -q .; then
             echo "Development, credential, or provisioning junk found in IPA"
             exit 1
