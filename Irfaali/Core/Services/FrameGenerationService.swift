@@ -50,15 +50,18 @@ final class FrameGenerationService {
     struct Result: Sendable {
         let url: URL
         let generatedFrameCount: Int
+        let sceneCutFallbackFrameCount: Int
         let sourceFrameCount: Int
         let targetFPS: Double
     }
 
     /// Generates a genuine optical-flow 2× video.
     ///
-    /// Each source-frame gap receives a newly synthesized midpoint produced from
-    /// forward + backward Vision optical flow and a Metal motion-warp pass. Audio
-    /// is then muxed back from the source without changing its timing.
+    /// Normal source-frame gaps receive newly synthesized motion-aware midpoint
+    /// frames. Hard scene cuts are detected before optical flow; those gaps use an
+    /// explicitly-counted temporal hold so we never create a ghosted cross-shot frame
+    /// and never misreport the hold as an AI-generated frame. Audio is muxed back
+    /// from the source without changing its timing.
     func generate2x(
         sourceURL: URL,
         sourceFPS: Double,
@@ -189,12 +192,14 @@ final class FrameGenerationService {
 
         let opticalFlow = OpticalFlowService()
         let synthesizer = try MotionWarpFrameSynthesizer()
+        let cutDetector = SceneCutDetector()
 
         var previousBuffer: CVPixelBuffer?
         var previousPTS: CMTime?
         var originPTS: CMTime?
         var sourceFrameCount = 0
         var generatedFrameCount = 0
+        var sceneCutFallbackFrameCount = 0
 
         while let sample = readerOutput.copyNextSampleBuffer() {
             try Task.checkCancellation()
@@ -220,30 +225,52 @@ final class FrameGenerationService {
                     writer: writer
                 )
 
-                let forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
-                let backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
+                let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
+                let fractions = plan.intermediateFractions()
+                let gap = CMTimeSubtract(currentPTS, previousPTS)
 
-                for fraction in plan.intermediateFractions() {
-                    try Task.checkCancellation()
-                    let generated = try synthesizer.synthesize(
-                        source: previousBuffer,
-                        target: currentBuffer,
-                        forwardFlow: forward,
-                        backwardFlow: backward,
-                        fraction: fraction
-                    )
+                if cut.isCut {
+                    // A hard edit has no physically meaningful optical-flow path.
+                    // Keep the previous shot until the real cut timestamp, and count
+                    // the inserted cadence sample separately from synthesized frames.
+                    for fraction in fractions {
+                        try Task.checkCancellation()
+                        let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
+                        let fallbackPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
+                        try append(
+                            previousBuffer,
+                            at: fallbackPTS,
+                            adaptor: adaptor,
+                            writerInput: writerInput,
+                            writer: writer
+                        )
+                        sceneCutFallbackFrameCount += 1
+                    }
+                } else {
+                    let forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
+                    let backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
 
-                    let gap = CMTimeSubtract(currentPTS, previousPTS)
-                    let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
-                    let generatedPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
-                    try append(
-                        generated,
-                        at: generatedPTS,
-                        adaptor: adaptor,
-                        writerInput: writerInput,
-                        writer: writer
-                    )
-                    generatedFrameCount += 1
+                    for fraction in fractions {
+                        try Task.checkCancellation()
+                        let generated = try synthesizer.synthesize(
+                            source: previousBuffer,
+                            target: currentBuffer,
+                            forwardFlow: forward,
+                            backwardFlow: backward,
+                            fraction: fraction
+                        )
+
+                        let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
+                        let generatedPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
+                        try append(
+                            generated,
+                            at: generatedPTS,
+                            adaptor: adaptor,
+                            writerInput: writerInput,
+                            writer: writer
+                        )
+                        generatedFrameCount += 1
+                    }
                 }
 
                 let adjustedCurrent = CMTimeSubtract(currentPTS, originPTS)
@@ -285,6 +312,7 @@ final class FrameGenerationService {
         return Result(
             url: muxedURL,
             generatedFrameCount: generatedFrameCount,
+            sceneCutFallbackFrameCount: sceneCutFallbackFrameCount,
             sourceFrameCount: sourceFrameCount,
             targetFPS: plan.targetFPS
         )
