@@ -26,7 +26,15 @@ jobs:
         run: bash scripts/prepare_app_icon.sh
 
       - name: Generate project
-        run: xcodegen generate
+        run: |
+          xcodegen generate
+          python3 - <<'PY'
+          import plistlib
+          with open("Irfaali/Resources/Info.plist", "rb") as stream:
+              info = plistlib.load(stream)
+          assert info["CFBundleShortVersionString"] == "1.1", info
+          assert info["CFBundleVersion"] == "2", info
+          PY
 
       - name: Show environment
         run: |
