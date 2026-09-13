@@ -44,7 +44,11 @@ struct SettingsView: View {
 
                             Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
                                 .font(.body.weight(.semibold))
-                                .foregroundStyle(preferences.appearance == appearance ? IrfaaliTheme.accent : .tertiary)
+                                .foregroundStyle(
+                                    preferences.appearance == appearance
+                                        ? IrfaaliTheme.accent
+                                        : Color.secondary.opacity(0.65)
+                                )
                         }
                         .contentShape(Rectangle())
                     }
