@@ -445,7 +445,7 @@ final class FrameGenerationService {
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else { throw GenerationError.cannotMuxAudio }
             let audioRange = try await audioTrack.load(.timeRange)
-            let range = CMTimeRangeGetIntersection(audioRange, CMTimeRange(start: .zero, duration: duration))
+            let range = CMTimeRangeGetIntersection(audioRange, otherRange: CMTimeRange(start: .zero, duration: duration))
             if range.duration.seconds > 0 {
                 try compositionAudioTrack.insertTimeRange(range, of: audioTrack, at: range.start)
             }

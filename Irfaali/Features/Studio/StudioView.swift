@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct StudioView: View {
     @StateObject private var model = StudioViewModel()
     @State private var photoItem: PhotosPickerItem?
@@ -94,8 +95,11 @@ struct StudioView: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            if model.info == nil {
+        let hasVideo = model.info != nil
+        let pickerTitle = preferences.text(ar: hasVideo ? "غيّر الفيديو" : "أضف الفيديو", en: hasVideo ? "Change Video" : "Add Video")
+        let pickerSubtitle = preferences.text(ar: "من مكتبة الصور", en: "From your photo library")
+        return VStack(alignment: .leading, spacing: 20) {
+            if !hasVideo {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(preferences.text(ar: "كل لقطة، بأفضل شكل.", en: "Make every frame count."))
                         .font(.system(size: 28, weight: .bold))
@@ -109,20 +113,20 @@ struct StudioView: View {
 
             PhotosPicker(selection: $photoItem, matching: .videos) {
                 VStack(spacing: 16) {
-                    Image(systemName: model.info == nil ? "plus" : "arrow.triangle.2.circlepath")
+                    Image(systemName: hasVideo ? "arrow.triangle.2.circlepath" : "plus")
                         .font(.system(size: 26, weight: .semibold))
                         .frame(width: 60, height: 60)
                         .background(IrfaaliTheme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 20))
-                    Text(preferences.text(ar: model.info == nil ? "أضف الفيديو" : "غيّر الفيديو", en: model.info == nil ? "Add Video" : "Change Video"))
+                    Text(pickerTitle)
                         .font(.title2.weight(.bold))
-                    if model.info == nil {
-                        Text(preferences.text(ar: "من مكتبة الصور", en: "From your photo library"))
+                    if !hasVideo {
+                        Text(pickerSubtitle)
                             .font(.footnote.weight(.medium))
                             .foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, model.info == nil ? 30 : 16)
+                .padding(.vertical, hasVideo ? 16 : 30)
                 .foregroundStyle(.primary)
                 .background(IrfaaliTheme.accent.opacity(0.055), in: RoundedRectangle(cornerRadius: 26))
                 .overlay {

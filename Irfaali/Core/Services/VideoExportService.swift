@@ -217,7 +217,7 @@ final class VideoExportService {
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else { throw ExportError.cannotCreateCompositionTrack }
             let audioRange = try await sourceAudioTrack.load(.timeRange)
-            let range = CMTimeRangeGetIntersection(audioRange, CMTimeRange(start: .zero, duration: duration))
+            let range = CMTimeRangeGetIntersection(audioRange, otherRange: CMTimeRange(start: .zero, duration: duration))
             if range.duration.seconds > 0 {
                 try compositionAudioTrack.insertTimeRange(range, of: sourceAudioTrack, at: range.start)
             }
