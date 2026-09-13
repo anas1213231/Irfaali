@@ -4,7 +4,11 @@ enum IrfaaliTheme {
     /// The brand palette is intentionally small: deep navy, ice blue and white.
     /// Keeping one accent across controls makes the app feel like one product,
     /// rather than a collection of unrelated cards.
-    static let accent = Color(red: 0.72, green: 0.88, blue: 1.00)
+    static let accent = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.72, green: 0.88, blue: 1, alpha: 1)
+            : UIColor(red: 0.12, green: 0.32, blue: 0.58, alpha: 1)
+    })
     static let accentDeep = Color(red: 0.25, green: 0.48, blue: 0.73)
     static let emerald = Color(red: 0.04, green: 0.15, blue: 0.30)
     static let ink = Color(red: 0.012, green: 0.025, blue: 0.065)

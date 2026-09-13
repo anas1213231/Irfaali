@@ -57,6 +57,12 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var saveState: SaveState = .idle
     @Published var errorMessage: String?
 
+    var isArabic = true
+
+    private func message(_ error: Error) -> String {
+        AppErrorMessage.describe(error, isArabic: isArabic)
+    }
+
     private let analyzer = VideoAnalyzer()
     private let exporter = VideoExportService()
     private let frameGenerator = FrameGenerationService()
@@ -64,16 +70,14 @@ final class StudioViewModel: ObservableObject {
     private let photoSaver = PhotoLibrarySaver()
     private var activeProcessingTask: Task<ExportOutcome?, Never>?
 
-    /// The public build only exposes operations that are verified by the
-    /// exporter and the final output audit. Higher-FPS frame synthesis remains
-    /// internal until it has completed physical-device acceptance.
+    /// Every selected operation must have an implemented, device-ready path.
     var canProcess: Bool {
         guard let info, !isAnalyzing, !isProcessing else { return false }
         guard VideoProcessingSettings.supportedResolutions(for: info).contains(settings.resolution),
               VideoProcessingSettings.supportedFrameRates(for: info).contains(settings.frameRate) else {
             return false
         }
-        return !settings.needsFrameGeneration(for: info)
+        return !settings.needsFrameGeneration(for: info) || frameGenerationReadiness?.canStart == true
     }
 
     var canCancelProcessing: Bool {
@@ -165,7 +169,7 @@ final class StudioViewModel: ObservableObject {
             enhancement = .smart(for: analyzed)
         } catch {
             info = nil
-            errorMessage = error.localizedDescription
+            errorMessage = message(error)
         }
     }
 
@@ -184,7 +188,8 @@ final class StudioViewModel: ObservableObject {
     }
 
     func updateEnhancement(_ keyPath: WritableKeyPath<VideoEnhancementSettings, Double>, value: Double) {
-        enhancement[keyPath: keyPath] = min(max(value, 0), 1)
+        let lower: Double = keyPath == \VideoEnhancementSettings.exposure || keyPath == \VideoEnhancementSettings.contrast ? -1 : 0
+        enhancement[keyPath: keyPath] = min(max(value, lower), 1)
         enhancement.markCustom()
     }
 
@@ -429,7 +434,7 @@ final class StudioViewModel: ObservableObject {
             lastOutcome = nil
             outputInfo = nil
             validationMessage = nil
-            errorMessage = "وقفناها يا وحش 👍 وما خلّينا أي ملف ناقص."
+            errorMessage = isArabic ? "أُلغيت المعالجة." : "Processing cancelled."
             return nil
         } catch {
             transientURLs.forEach { try? FileManager.default.removeItem(at: $0) }
@@ -437,7 +442,7 @@ final class StudioViewModel: ObservableObject {
             progress = 0
             lastOutcome = nil
             outputInfo = nil
-            errorMessage = error.localizedDescription
+            errorMessage = message(error)
             return nil
         }
     }
@@ -450,7 +455,7 @@ final class StudioViewModel: ObservableObject {
             try await photoSaver.saveVideo(at: url)
             saveState = .saved
         } catch {
-            saveState = .failed(error.localizedDescription)
+            saveState = .failed(message(error))
         }
     }
 }

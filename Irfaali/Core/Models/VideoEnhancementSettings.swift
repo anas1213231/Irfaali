@@ -1,7 +1,7 @@
 import Foundation
 
-struct VideoEnhancementSettings: Equatable, Sendable {
-    enum Mode: String, CaseIterable, Identifiable, Sendable {
+struct VideoEnhancementSettings: Equatable, Hashable, Sendable {
+    enum Mode: String, CaseIterable, Identifiable, Hashable, Sendable {
         case off
         case smart
         case clean
@@ -26,6 +26,8 @@ struct VideoEnhancementSettings: Equatable, Sendable {
     var detailRecovery: Double = 0
     var sharpening: Double = 0
     var colorBoost: Double = 0
+    var exposure: Double = 0
+    var contrast: Double = 0
 
     static let off = VideoEnhancementSettings()
 
@@ -90,11 +92,11 @@ struct VideoEnhancementSettings: Equatable, Sendable {
     }
 
     var isEnabled: Bool {
-        mode != .off && (denoise > 0.001 || detailRecovery > 0.001 || sharpening > 0.001 || colorBoost > 0.001)
+        mode != .off && (denoise > 0.001 || detailRecovery > 0.001 || sharpening > 0.001 || colorBoost > 0.001 || abs(exposure) > 0.001 || abs(contrast) > 0.001)
     }
 
     mutating func markCustom() {
-        if mode != .off { mode = .custom }
+        mode = .custom
     }
 
     func normalized() -> VideoEnhancementSettings {
@@ -103,7 +105,9 @@ struct VideoEnhancementSettings: Equatable, Sendable {
             denoise: Self.clamp(denoise),
             detailRecovery: Self.clamp(detailRecovery),
             sharpening: Self.clamp(sharpening),
-            colorBoost: Self.clamp(colorBoost)
+            colorBoost: Self.clamp(colorBoost),
+            exposure: min(max(exposure, -1), 1),
+            contrast: min(max(contrast, -1), 1)
         )
     }
 

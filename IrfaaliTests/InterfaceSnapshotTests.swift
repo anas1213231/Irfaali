@@ -13,14 +13,14 @@ final class InterfaceSnapshotTests: XCTestCase {
         preferences.language = .arabic
         preferences.appearance = .dark
         preferences.animationsEnabled = false
-        try await capture(StudioView(), preferences: preferences, label: "studio")
-        try await capture(SettingsView(), preferences: preferences, label: "settings-dark")
+        try await Self.capture(StudioView(), preferences: preferences, label: "studio")
+        try await Self.capture(SettingsView(), preferences: preferences, label: "settings-dark")
         preferences.appearance = .light
-        try await capture(SettingsView(), preferences: preferences, label: "settings-light")
+        try await Self.capture(SettingsView(), preferences: preferences, label: "settings-light")
     }
 
     @MainActor
-    private func capture<Content: View>(_ content: Content, preferences: AppPreferences, label: String) async throws {
+    static func capture<Content: View>(_ content: Content, preferences: AppPreferences, label: String) async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let original = scene.windows.first(where: \.isKeyWindow)
         let window = UIWindow(windowScene: scene)
@@ -28,7 +28,8 @@ final class InterfaceSnapshotTests: XCTestCase {
         window.overrideUserInterfaceStyle = preferences.appearance == .light ? .light : .dark
         let root = NavigationStack { content }
             .environmentObject(preferences)
-            .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.layoutDirection, preferences.layoutDirection)
+            .environment(\.locale, preferences.locale)
             .modelContainer(for: ProcessedVideoRecord.self, inMemory: true)
         let host = UIHostingController(rootView: root)
         window.rootViewController = host
@@ -44,7 +45,7 @@ final class InterfaceSnapshotTests: XCTestCase {
         let attachment = XCTAttachment(image: image)
         attachment.name = label
         attachment.lifetime = .keepAlways
-        add(attachment)
+        XCTContext.runActivity(named: label) { $0.add(attachment) }
         // Synthetic empty-screen previews only; never capture user media.
         print("IRFAALI_PREVIEW_\(label):\(data.base64EncodedString())")
     }

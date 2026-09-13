@@ -59,6 +59,7 @@ final class AppPreferences: ObservableObject {
     }
 
     var isArabic: Bool { language == .arabic }
+    var locale: Locale { Locale(identifier: isArabic ? "ar" : "en") }
 
     var layoutDirection: LayoutDirection {
         isArabic ? .rightToLeft : .leftToRight

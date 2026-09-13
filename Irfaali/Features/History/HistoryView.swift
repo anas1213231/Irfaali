@@ -114,11 +114,11 @@ struct HistoryView: View {
                             .font(.headline.weight(.bold))
                             .lineLimit(1)
 
-                        Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        Text(record.presetName)
+                        Text(preferences.text(ar: "فيديو مُصدّر", en: "Exported video"))
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(IrfaaliTheme.accent)
                             .lineLimit(1)
@@ -211,33 +211,16 @@ private struct VideoPreviewSheet: View {
     @EnvironmentObject private var preferences: AppPreferences
     let record: ProcessedVideoRecord
 
-    @State private var player: AVPlayer
-
-    init(record: ProcessedVideoRecord) {
-        self.record = record
-        _player = State(initialValue: AVPlayer(url: record.outputURL))
-    }
-
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-
-                VideoPlayer(player: player)
-                    .ignoresSafeArea(edges: .horizontal)
-            }
-            .navigationTitle(record.sourceFileName)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(preferences.text(ar: "تم", en: "Done")) {
-                        dismiss()
+            VideoCanvas(url: record.outputURL, enhancement: .off)
+                .navigationTitle(record.sourceFileName)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(preferences.text(ar: "تم", en: "Done")) { dismiss() }
                     }
-                    .fontWeight(.bold)
                 }
-            }
-            .onAppear { player.play() }
-            .onDisappear { player.pause() }
         }
     }
 }

@@ -119,6 +119,95 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         ))
     }
 
+    @MainActor
+    func testEditorLanguageSnapshotsAndPlaybackAudioPolicy() async throws {
+        let source = try await makeFixture(rotated: true)
+        defer { remove(source) }
+        let model = StudioViewModel()
+        await model.importVideo(url: source)
+        let preferences = AppPreferences(defaults: UserDefaults(suiteName: "editor-test")!)
+        preferences.animationsEnabled = false
+        preferences.appearance = .dark
+        for language in AppPreferences.Language.allCases {
+            preferences.language = language
+            try await InterfaceSnapshotTests.capture(StudioView(model: model), preferences: preferences, label: "editor-\(language.rawValue)")
+        }
+        let playback = VideoPlaybackController()
+        playback.load(url: source, enhancement: .off)
+        defer { playback.stop() }
+        XCTAssertNil(playback.error)
+        XCTAssertEqual(AVAudioSession.sharedInstance().category, .playback)
+        XCTAssertEqual(AVAudioSession.sharedInstance().mode, .moviePlayback)
+        XCTAssertFalse(playback.player.isMuted)
+        XCTAssertEqual(playback.player.volume, 1)
+    }
+
+    func testExposureActuallyChangesDecodedPixelsAndKeepsAudio() async throws {
+        let source = try await makeFixture()
+        defer { remove(source) }
+        var settings = VideoEnhancementSettings.off
+        settings.mode = .custom
+        settings.exposure = 0.7
+        let result = try await VideoEnhancementService().enhance(sourceURL: source, settings: settings, preferHEVC: false) { _ in }
+        defer { remove(result) }
+        let before = try await averagePixelValue(source)
+        let after = try await averagePixelValue(result)
+        XCTAssertGreaterThan(after, before + 10, "The encoded pixels must reflect the exposure adjustment")
+        try await assertAudioTiming(url: result)
+    }
+
+    func testMotionInterpolation30To60EncodesNewFramesAndAudio() async throws {
+        let source = try await makeFixture()
+        defer { remove(source) }
+        let info = try await VideoAnalyzer().analyze(url: source)
+        let reduced = try await VideoExportService().export(info: info, settings: .init(resolution: .source, frameRate: .fps30, codec: .h264)) { _ in }
+        defer { remove(reduced.url) }
+        let generated: FrameGenerationService.Result
+        do {
+            generated = try await FrameGenerationService().generate2x(sourceURL: reduced.url, sourceFPS: 30, targetFPS: 60, estimatedBitrate: info.estimatedBitrate, preferHEVC: false) { _ in }
+        } catch {
+            #if targetEnvironment(simulator)
+            let ns = error as NSError
+            if ns.domain == "com.apple.vis", ns.code == 9 {
+                throw XCTSkip("Vision optical flow is unavailable in this simulator: \(ns.localizedDescription). Physical iPhone verification remains required.")
+            }
+            #endif
+            throw error
+        }
+        defer { remove(generated.url) }
+        XCTAssertGreaterThan(generated.generatedFrameCount, 0)
+        let count = try await decodedFrameCount(url: generated.url)
+        XCTAssertEqual(count, generated.sourceFrameCount + generated.generatedFrameCount + generated.sceneCutFallbackFrameCount)
+        let output = try await VideoAnalyzer().analyze(url: generated.url)
+        XCTAssertEqual(output.sourceFPS, 60, accuracy: 0.5)
+        try await assertAudioTiming(url: generated.url)
+    }
+
+    private func averagePixelValue(_ url: URL) async throws -> Double {
+        let asset = AVURLAsset(url: url)
+        let tracks = try await asset.loadTracks(withMediaType: .video)
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: try XCTUnwrap(tracks.first), outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
+        reader.add(output)
+        XCTAssertTrue(reader.startReading())
+        defer { reader.cancelReading() }
+        let sample = try XCTUnwrap(output.copyNextSampleBuffer())
+        let pixel = try XCTUnwrap(CMSampleBufferGetImageBuffer(sample))
+        CVPixelBufferLockBaseAddress(pixel, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixel, .readOnly) }
+        let base = CVPixelBufferGetBaseAddress(pixel)!.assumingMemoryBound(to: UInt8.self)
+        let stride = CVPixelBufferGetBytesPerRow(pixel)
+        let width = CVPixelBufferGetWidth(pixel), height = CVPixelBufferGetHeight(pixel)
+        var sum = 0.0
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = y * stride + x * 4
+                sum += Double(base[offset]) + Double(base[offset + 1]) + Double(base[offset + 2])
+            }
+        }
+        return sum / Double(width * height * 3)
+    }
+
     private func makeFixture(rotated: Bool = false) async throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

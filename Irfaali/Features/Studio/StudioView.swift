@@ -9,9 +9,16 @@ struct StudioView: View {
     @State private var showFileImporter = false
     @State private var showSourceDetails = false
     @State private var hasAppeared = false
+    @State private var showOriginal = false
+    @State private var editorTab = 0
+    @State private var previewExport = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var preferences: AppPreferences
+
+    init(model: StudioViewModel = StudioViewModel()) {
+        _model = StateObject(wrappedValue: model)
+    }
 
     var body: some View {
         ZStack {
@@ -19,7 +26,7 @@ struct StudioView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    studioIntro
+                    if model.info == nil { studioIntro }
                     importCard
 
                     if model.isAnalyzing {
@@ -28,8 +35,28 @@ struct StudioView: View {
                     }
 
                     if let info = model.info {
-                        sourceCard(info)
-                        processingCard(info)
+                        previewCard(info)
+                        Picker(preferences.text(ar: "الأدوات", en: "Tools"), selection: $editorTab) {
+                            Text(preferences.text(ar: "تعديل الصورة", en: "Adjust")).tag(0)
+                            Text(preferences.text(ar: "التصدير", en: "Export")).tag(1)
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(model.isProcessing)
+                        if editorTab == 0 {
+                            adjustmentPanel
+                            Button { editorTab = 1 } label: {
+                                Label(preferences.text(ar: "إعدادات التصدير", en: "Export settings"), systemImage: "arrow.up.right")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PremiumPrimaryButtonStyle())
+                        } else {
+                            processingCard(info)
+                        }
+                        DisclosureGroup(preferences.text(ar: "معلومات المصدر", en: "Source information")) {
+                            sourceCard(info)
+                        }
+                        .font(.subheadline)
+                        .tint(IrfaaliTheme.accent)
                     }
 
                     if let outcome = model.lastOutcome {
@@ -55,8 +82,8 @@ struct StudioView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle(preferences.text(ar: "استوديو الفيديو", en: "Video Studio"))
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle(preferences.text(ar: "ارفعلي", en: "Irfaali"))
+        .navigationBarTitleDisplayMode(.inline)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.info?.url)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isAnalyzing)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isProcessing)
@@ -66,6 +93,17 @@ struct StudioView: View {
         }
         .sensoryFeedback(.success, trigger: model.saveState == .saved) { _, _ in
             preferences.hapticsEnabled
+        }
+        .onChange(of: preferences.language, initial: true) { _, _ in
+            model.isArabic = preferences.isArabic
+        }
+        .onChange(of: model.info?.url) { _, _ in
+            showOriginal = false
+            previewExport = false
+            editorTab = 0
+        }
+        .onChange(of: model.lastOutcome?.url) { _, value in
+            if value != nil { previewExport = true }
         }
         .onAppear {
             guard !hasAppeared else { return }
@@ -85,7 +123,7 @@ struct StudioView: View {
                         await model.importVideo(url: movie.url)
                     }
                 } catch {
-                    model.errorMessage = error.localizedDescription
+                    model.errorMessage = AppErrorMessage.describe(error, isArabic: preferences.isArabic)
                 }
             }
         }
@@ -106,96 +144,125 @@ struct StudioView: View {
                         try FileManager.default.copyItem(at: url, to: local)
                         await model.importVideo(url: local)
                     } catch {
-                        model.errorMessage = error.localizedDescription
+                        model.errorMessage = AppErrorMessage.describe(error, isArabic: preferences.isArabic)
                     }
                 }
             case .failure(let error):
-                model.errorMessage = error.localizedDescription
+                model.errorMessage = AppErrorMessage.describe(error, isArabic: preferences.isArabic)
             }
         }
     }
 
     private var studioIntro: some View {
-        HStack(alignment: .top, spacing: 11) {
-            Image(systemName: "sparkles.tv.fill")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(IrfaaliTheme.accent)
-                .frame(width: 34, height: 34)
-                .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-
-            Text(
-                preferences.text(
-                    ar: "ارفع فيديوك، خلّ ارفعلي يقرأه، وبعدها اختَر الناتج اللي يناسبك.",
-                    en: "Add a video, let Irfaali inspect it, then choose the output that fits."
-                )
-            )
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 18) {
+            Image("OfficialLogo")
+                .resizable().scaledToFit()
+                .frame(width: 72, height: 72)
+                .padding(.top, 24)
+            Text(preferences.text(ar: "كل لقطة.\nبشكل أفضل.", en: "Every frame.\nRefined."))
+                .font(.system(size: 40, weight: .bold))
+                .tracking(preferences.isArabic ? 0 : -1.5)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(preferences.text(ar: "عدّل الإضاءة والتفاصيل، وشاهد النتيجة قبل التصدير.", en: "Shape the light and detail. See your adjustments before exporting."))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 3)
+        .padding(.bottom, 12)
     }
 
     private var importCard: some View {
-        let hasVideo = model.info != nil
-        let title = preferences.text(
-            ar: hasVideo ? "تغيير الفيديو" : "أضف الفيديو",
-            en: hasVideo ? "Change Video" : "Add Video"
-        )
-
-        return PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .fill(IrfaaliTheme.accent.opacity(0.14))
-                        Image(systemName: hasVideo ? "film.fill" : "video.badge.plus")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(IrfaaliTheme.accent)
-                    }
-                    .frame(width: 42, height: 42)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(preferences.text(ar: "مصدر الفيديو", en: "Video source"))
-                            .font(.headline.weight(.bold))
-                        Text(
-                            preferences.text(
-                                ar: hasVideo ? "بدّل المقطع إذا تبي." : "اختَر مقطع من الصور أو الملفات.",
-                                en: hasVideo ? "Swap the clip whenever you need." : "Choose a clip from Photos or Files."
-                            )
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 0)
+        VStack(spacing: 12) {
+            PhotosPicker(selection: $photoItem, matching: .videos) {
+                HStack(spacing: 12) {
+                    Image(systemName: model.info == nil ? "plus" : "arrow.triangle.2.circlepath")
+                        .font(.title3.weight(.medium))
+                    Text(preferences.text(ar: model.info == nil ? "أضف الفيديو" : "تغيير الفيديو", en: model.info == nil ? "Add video" : "Change video"))
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "photo.on.rectangle")
                 }
+                .padding(.vertical, model.info == nil ? 12 : 0)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PremiumPrimaryButtonStyle())
+            Button { showFileImporter = true } label: {
+                Label(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"), systemImage: "folder")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: 40)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .disabled(model.isAnalyzing || model.isProcessing)
+    }
 
-                PhotosPicker(selection: $photoItem, matching: .videos) {
-                    Label(title, systemImage: hasVideo ? "arrow.triangle.2.circlepath" : "plus")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PremiumPrimaryButtonStyle())
-                .disabled(model.isProcessing || model.isAnalyzing)
-
-                Button {
-                    showFileImporter = true
-                } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: "folder")
-                        Text(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"))
-                        Spacer()
-                        Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.tertiary)
+    private func previewCard(_ info: VideoAssetInfo) -> some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text(preferences.text(ar: "المعاينة", en: "Preview"))
+                    .font(.headline)
+                Spacer()
+                if model.lastOutcome != nil {
+                    Button {
+                        previewExport.toggle()
+                    } label: {
+                        Text(preferences.text(ar: previewExport ? "عرض التعديل" : "عرض الملف الناتج", en: previewExport ? "Show adjustments" : "Show export"))
+                            .font(.caption.weight(.semibold))
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(PremiumSecondaryButtonStyle())
-                .disabled(model.isProcessing || model.isAnalyzing)
+            }
+            VideoCanvas(
+                url: previewExport ? (model.lastOutcome?.url ?? info.url) : info.url,
+                enhancement: previewExport || showOriginal ? .off : model.enhancement
+            )
+            .frame(height: info.height > info.width ? 330 : 230)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                Text(preferences.text(ar: previewExport ? "الناتج" : (showOriginal ? "الأصل" : "التعديل"), en: previewExport ? "EXPORTED" : (showOriginal ? "ORIGINAL" : "ADJUSTED")))
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(12)
+            }
+            if !previewExport {
+                Picker(preferences.text(ar: "المقارنة", en: "Compare"), selection: $showOriginal) {
+                    Text(preferences.text(ar: "الأصل", en: "Original")).tag(true)
+                    Text(preferences.text(ar: "التعديل", en: "Adjusted")).tag(false)
+                }
+                .pickerStyle(.segmented)
+                Text(preferences.text(ar: "معاينة الألوان والتفاصيل مباشرة. الدقة والفريمات تُطبّق عند التصدير.", en: "Live color and detail preview. Resolution and frame rate are applied on export."))
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var adjustmentPanel: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(VideoEnhancementSettings.Mode.allCases.filter { $0 != .custom }) { mode in
+                        Button {
+                            model.applyEnhancementMode(mode)
+                            showOriginal = false
+                            previewExport = false
+                        } label: {
+                            Text(mode.title(isArabic: preferences.isArabic))
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 16).padding(.vertical, 12)
+                                .background(model.enhancement.mode == mode ? IrfaaliTheme.accent.opacity(0.2) : Color.secondary.opacity(0.08), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            enhancementSlider(icon: "sun.max", ar: "الإضاءة", en: "Exposure", keyPath: \VideoEnhancementSettings.exposure, range: -1...1)
+            enhancementSlider(icon: "circle.lefthalf.filled", ar: "التباين", en: "Contrast", keyPath: \VideoEnhancementSettings.contrast, range: -1...1)
+            enhancementControls
+        }
+        .disabled(model.isProcessing)
     }
 
     private var analyzingCard: some View {
@@ -419,28 +486,10 @@ struct StudioView: View {
 
                 settingsDivider
 
-                settingsMenuRow(
-                    icon: "wand.and.rays",
-                    title: preferences.text(ar: "تحسين الصورة", en: "Image enhancement"),
-                    value: model.enhancement.mode.title(isArabic: preferences.isArabic)
-                ) {
-                    ForEach(VideoEnhancementSettings.Mode.allCases) { mode in
-                        Button {
-                            model.applyEnhancementMode(mode)
-                        } label: {
-                            Label(
-                                mode.title(isArabic: preferences.isArabic),
-                                systemImage: model.enhancement.mode == mode ? "checkmark" : "wand.and.rays"
-                            )
-                        }
-                    }
-                }
-
-                if model.enhancement.isEnabled {
-                    enhancementControls
-                        .padding(.top, 12)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                Text(outputExplanation(info))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 outputSummary(info)
                     .padding(.top, 16)
@@ -460,7 +509,10 @@ struct StudioView: View {
                                     width: finalInfo.width,
                                     height: finalInfo.height,
                                     fps: finalInfo.sourceFPS,
-                                    codec: finalInfo.videoCodec
+                                    codec: finalInfo.videoCodec,
+                                    duration: finalInfo.duration,
+                                    fileSizeBytes: finalInfo.fileSizeBytes,
+                                    estimatedBitrate: finalInfo.estimatedBitrate
                                 )
                                 modelContext.insert(record)
                                 try? modelContext.save()
@@ -531,7 +583,7 @@ struct StudioView: View {
     private var enhancementControls: some View {
         VStack(spacing: 13) {
             enhancementSlider(icon: "drop.degreesign", ar: "تنظيف التشويش", en: "Noise Cleanup", keyPath: \VideoEnhancementSettings.denoise)
-            enhancementSlider(icon: "viewfinder", ar: "استرجاع التفاصيل", en: "Detail Recovery", keyPath: \VideoEnhancementSettings.detailRecovery)
+            enhancementSlider(icon: "viewfinder", ar: "وضوح التفاصيل", en: "Detail", keyPath: \VideoEnhancementSettings.detailRecovery)
             enhancementSlider(icon: "scope", ar: "الحدة", en: "Sharpening", keyPath: \VideoEnhancementSettings.sharpening)
             enhancementSlider(icon: "circle.lefthalf.filled", ar: "حيوية اللون", en: "Color Boost", keyPath: \VideoEnhancementSettings.colorBoost)
 
@@ -553,7 +605,8 @@ struct StudioView: View {
         icon: String,
         ar: String,
         en: String,
-        keyPath: WritableKeyPath<VideoEnhancementSettings, Double>
+        keyPath: WritableKeyPath<VideoEnhancementSettings, Double>,
+        range: ClosedRange<Double> = 0...1
     ) -> some View {
         let value = model.enhancement[keyPath: keyPath]
 
@@ -570,9 +623,9 @@ struct StudioView: View {
             Slider(
                 value: Binding(
                     get: { model.enhancement[keyPath: keyPath] },
-                    set: { model.updateEnhancement(keyPath, value: $0) }
+                    set: { model.updateEnhancement(keyPath, value: $0); showOriginal = false; previewExport = false }
                 ),
-                in: 0...1
+                in: range
             )
             .tint(IrfaaliTheme.accent)
             .disabled(model.isProcessing)
@@ -699,6 +752,22 @@ struct StudioView: View {
         }
     }
 
+    private func outputExplanation(_ info: VideoAssetInfo) -> String {
+        let target = model.settings.targetSize(for: info)
+        let upscaled = max(target.width, target.height) > CGFloat(max(info.width, info.height))
+        var parts: [String] = []
+        if upscaled {
+            parts.append(preferences.text(ar: "تكبير الدقة إلى \(Int(target.width))×\(Int(target.height)). لا يعيد تفاصيل غير موجودة في الأصل.", en: "Upscaled to \(Int(target.width))×\(Int(target.height)). This cannot restore detail missing from the source."))
+        }
+        if model.needsFrameGeneration {
+            parts.append(preferences.text(ar: "توليد إطارات وسطية بتقدير الحركة؛ قد تظهر تشوهات حول الحركة السريعة.", en: "Motion interpolation creates intermediate frames; fast motion may show artifacts."))
+            if model.frameGenerationReadiness?.canStart == false {
+                parts.append(preferences.text(ar: "التوليد غير متاح بحالة الجهاز أو الدقة الحالية. قلل الدقة أو انتظر حتى يبرد الجهاز.", en: "Generation is unavailable with the current device conditions or size. Lower the resolution or let the device cool down."))
+            }
+        }
+        return parts.joined(separator: "\n")
+    }
+
     private func processingSummary(_ info: VideoAssetInfo) -> String {
         let size = model.settings.targetSize(for: info)
         let fps = model.settings.frameRate.requestedFPS ?? info.sourceFPS
@@ -711,7 +780,9 @@ struct StudioView: View {
         let output = model.outputInfo
         let outputFPS = output?.sourceFPS ?? outcome.outputFPS
         let fpsText: String
-        if outcome.fpsMode == .retimed {
+        if outcome.fpsMode == .interpolated {
+            fpsText = preferences.text(ar: "تم توليد \(model.generatedFrameCount) إطار جديد للحركة عند \(IrfaaliFormatters.fps(outputFPS)).", en: "Generated \(model.generatedFrameCount) new motion frames at \(IrfaaliFormatters.fps(outputFPS)).")
+        } else if outcome.fpsMode == .retimed {
             fpsText = preferences.text(
                 ar: "تم تحويل الفريمات إلى \(IrfaaliFormatters.fps(outputFPS)) مع الحفاظ على ترتيبها.",
                 en: "Frames were retimed to \(IrfaaliFormatters.fps(outputFPS)) while preserving their order."

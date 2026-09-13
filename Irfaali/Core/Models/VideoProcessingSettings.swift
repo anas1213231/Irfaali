@@ -133,25 +133,16 @@ struct VideoProcessingSettings: Equatable, Sendable {
         !needsFrameGeneration(for: info)
     }
 
-    /// Output sizes that do not invent pixels for this source. The source
-    /// option is always present; larger targets are offered only when the
-    /// source already contains that many pixels on its long edge.
+    /// Export supports resampling to these sizes; the UI identifies upscaling.
     static func supportedResolutions(for info: VideoAssetInfo) -> [Resolution] {
-        let sourceLongEdge = max(info.width, info.height)
-        return Resolution.allCases.filter { resolution in
-            guard let maximumLongEdge = resolution.maximumLongEdge else { return true }
-            return sourceLongEdge >= Int(maximumLongEdge)
-        }
+        Resolution.allCases
     }
 
-    /// Frame rates that can be encoded from the source cadence without
-    /// synthesising frames. Higher frame-rate generation is intentionally not
-    /// part of the public release surface until it has passed device-quality
-    /// acceptance.
+    /// Offer native cadence conversion and the implemented 2x motion path only.
     static func supportedFrameRates(for info: VideoAssetInfo) -> [FrameRate] {
         FrameRate.allCases.filter { frameRate in
-            guard let requested = frameRate.requestedFPS else { return true }
-            return requested <= info.sourceFPS + 0.5
+            guard let target = frameRate.requestedFPS else { return true }
+            return FrameGenerationPlan.make(sourceFPS: info.sourceFPS, targetFPS: target) != nil
         }
     }
 

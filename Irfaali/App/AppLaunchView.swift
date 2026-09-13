@@ -11,7 +11,7 @@ struct AppLaunchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReady = false
     @State private var hasStarted = false
-    @State private var logoIsVisible = false
+    @State private var logoIsVisible = true
     @State private var wordmarkIsVisible = false
 
     var body: some View {
@@ -40,14 +40,14 @@ struct AppLaunchView: View {
                 Image("OfficialLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 156, height: 156)
-                    .scaleEffect(logoIsVisible ? 1 : 0.82)
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(logoIsVisible ? 1 : 0.98)
                     .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
 
                 VStack(spacing: 6) {
-                    Text(AppBranding.appName)
-                        .font(.system(size: 34, weight: .bold, design: .default))
+                    Text(preferences.text(ar: "ارفعلي", en: "Irfaali"))
+                        .font(.system(size: 28, weight: .semibold, design: .default))
                         .foregroundStyle(.white)
                         .opacity(wordmarkIsVisible ? 1 : 0)
                         .offset(y: wordmarkIsVisible ? 0 : 8)
@@ -69,8 +69,8 @@ struct AppLaunchView: View {
         // single soft settle rather than a bounce or a rotation, so it feels
         // native to iOS while still making the launch state unmistakable.
         let minimumDuration: Duration = preferences.animationsEnabled && !reduceMotion
-            ? .milliseconds(1_150)
-            : .milliseconds(780)
+            ? .milliseconds(550)
+            : .milliseconds(250)
 
         if preferences.animationsEnabled && !reduceMotion {
             withAnimation(.spring(response: 0.62, dampingFraction: 0.86)) {
