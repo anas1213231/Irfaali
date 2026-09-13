@@ -40,6 +40,8 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         try await assertAudioTiming(url: result.url)
         let frames = try await decodedFrameCount(url: result.url)
         XCTAssertEqual(frames, 30)
+        let encodedFrames = try await VideoSampleAudit.frameCount(url: result.url)
+        XCTAssertEqual(encodedFrames, frames)
     }
 
     func testEnhancementProducesDecodableVideoWithAudio() async throws {
@@ -81,6 +83,40 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         } catch is CancellationError {
             XCTAssertEqual(try Data(contentsOf: source), original)
         }
+    }
+
+    func testPortrait4KExportEncodesRequestedDimensions() async throws {
+        let source = try await makeFixture(rotated: true)
+        defer { remove(source) }
+        let input = try await VideoAnalyzer().analyze(url: source)
+        let settings = VideoProcessingSettings(resolution: .ultraHD, frameRate: .fps30, codec: .h264)
+        let result = try await VideoExportService().export(info: input, settings: settings) { _ in }
+        defer { remove(result.url) }
+        let output = try await VideoAnalyzer().analyze(url: result.url)
+        XCTAssertEqual(output.width, 2160)
+        XCTAssertEqual(output.height, 3840)
+        XCTAssertNil(OutputVerification.mismatch(source: input, output: output, settings: settings))
+        let frames = try await decodedFrameCount(url: result.url)
+        XCTAssertEqual(frames, 30)
+        try await assertAudioTiming(url: result.url)
+    }
+
+    func testVerifierRejectsUnprocessedFileFor4KAndHigherFPSRequests() async throws {
+        let source = try await makeFixture()
+        defer { remove(source) }
+        let input = try await VideoAnalyzer().analyze(url: source)
+        XCTAssertNotNil(OutputVerification.mismatch(
+            source: input, output: input,
+            settings: VideoProcessingSettings(resolution: .ultraHD, frameRate: .source, codec: .h264)
+        ))
+        XCTAssertNotNil(OutputVerification.mismatch(
+            source: input, output: input,
+            settings: VideoProcessingSettings(resolution: .source, frameRate: .fps120, codec: .h264)
+        ))
+        XCTAssertNil(OutputVerification.mismatch(
+            source: input, output: input,
+            settings: VideoProcessingSettings(resolution: .source, frameRate: .source, codec: .source)
+        ))
     }
 
     private func makeFixture(rotated: Bool = false) async throws -> URL {

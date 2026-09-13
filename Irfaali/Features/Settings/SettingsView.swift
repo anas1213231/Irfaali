@@ -14,7 +14,7 @@ struct SettingsView: View {
                     experienceCard
                     developerCard
                     aboutCard
-                    accessCard
+                    versionFooter
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -22,6 +22,8 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollIndicators(.hidden)
         .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.language)
         .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.appearance)
     }
@@ -43,7 +45,7 @@ struct SettingsView: View {
 
                 Text(
                     preferences.text(
-                        ar: "اختار اللي يريحك يا وحش — ونرتب الواجهة من اليمين أو اليسار لحالها.",
+                        ar: "اختار اللغة اللي تناسبك.",
                         en: "Choose your language and the interface direction updates automatically."
                     )
                 )
@@ -70,27 +72,27 @@ struct SettingsView: View {
                         .foregroundStyle(IrfaaliTheme.accent)
                 }
 
-                VStack(spacing: 9) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 10)], spacing: 10) {
                     ForEach(AppPreferences.Appearance.allCases) { appearance in
-                        Button {
-                            preferences.appearance = appearance
-                        } label: {
-                            HStack(spacing: 12) {
+                        Button { preferences.appearance = appearance } label: {
+                            VStack(spacing: 10) {
                                 themePreview(for: appearance)
-
                                 Text(preferences.appearanceName(appearance))
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.caption.weight(.semibold))
                                     .foregroundStyle(.primary)
-
-                                Spacer()
-
                                 Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
                                     .foregroundStyle(preferences.appearance == appearance ? IrfaaliTheme.accent : .secondary)
                             }
-                            .padding(.vertical, 4)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(preferences.appearance == appearance ? IrfaaliTheme.accent : .clear, lineWidth: 1.5)
+                            }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(preferences.appearance == appearance ? .isSelected : [])
                     }
                 }
             }
@@ -102,7 +104,7 @@ struct SettingsView: View {
             VStack(spacing: 14) {
                 Toggle(isOn: $preferences.animationsEnabled) {
                     Label(
-                        preferences.text(ar: "الأنيميشن والحركات", en: "Animations & Motion"),
+                        preferences.text(ar: "الحركة والتأثيرات", en: "Animations & Motion"),
                         systemImage: "sparkles"
                     )
                     .font(.subheadline.weight(.semibold))
@@ -194,46 +196,11 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    private var accessCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Label(
-                        preferences.text(ar: "الوصول", en: "Access"),
-                        systemImage: "sparkles"
-                    )
-                    .font(.headline.weight(.bold))
-                    Spacer()
-                    Text("FREE")
-                        .font(.caption2.bold())
-                        .tracking(1.2)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(IrfaaliTheme.accent.opacity(0.11), in: Capsule())
-                }
-
-                Text(
-                    preferences.text(
-                        ar: "كل قدرات ارفعلي مجانية — بدون اشتراك، بدون Credits، وبدون Paywall.",
-                        en: "Irfaali is free to use with no subscriptions, credits or paywalls."
-                    )
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                Divider().opacity(0.3)
-
-                HStack {
-                    Text(preferences.text(ar: "الإصدار", en: "Version"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(versionText)
-                        .font(.caption.monospacedDigit().weight(.semibold))
-                }
-            }
-        }
+    private var versionFooter: some View {
+        Text(preferences.text(ar: "ارفعلي · الإصدار \(versionText)", en: "Irfaali · Version \(versionText)"))
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 12)
     }
 
     @ViewBuilder
@@ -267,7 +234,6 @@ struct SettingsView: View {
 
     private var versionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-        return "\(version) (\(build))"
+        return version
     }
 }

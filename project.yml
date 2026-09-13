@@ -10,12 +10,16 @@ settings:
     SWIFT_VERSION: 5.0
     IPHONEOS_DEPLOYMENT_TARGET: 17.0
     TARGETED_DEVICE_FAMILY: 1
-    MARKETING_VERSION: 1.0.0
-    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 1.1
+    CURRENT_PROJECT_VERSION: 2
     SWIFT_STRICT_CONCURRENCY: targeted
+  configs:
+    DeviceQA:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) IRFAALI_DEVICE_QA"
 configs:
   Debug: debug
   Release: release
+  DeviceQA: release
 targets:
   Irfaali:
     type: application

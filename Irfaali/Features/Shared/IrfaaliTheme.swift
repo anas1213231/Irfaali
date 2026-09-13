@@ -32,9 +32,11 @@ struct ThemeBackground: View {
         ZStack {
             base
 
-            if isDark {
+            if preferences.appearance == .pureBlack || preferences.appearance == .pureWhite {
+                Color.clear
+            } else if isDark {
                 RadialGradient(
-                    colors: [IrfaaliTheme.emerald.opacity(0.42), .clear],
+                    colors: [IrfaaliTheme.emerald.opacity(0.18), .clear],
                     center: .topTrailing,
                     startRadius: 8,
                     endRadius: 360

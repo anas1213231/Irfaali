@@ -436,17 +436,19 @@ final class FrameGenerationService {
             at: .zero
         )
 
+        videoCompositionTrack.preferredTransform = try await generatedTrack.load(.preferredTransform)
+
         for audioTrack in audioTracks {
             try Task.checkCancellation()
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
-            ) else { continue }
-            try? compositionAudioTrack.insertTimeRange(
-                CMTimeRange(start: .zero, duration: duration),
-                of: audioTrack,
-                at: .zero
-            )
+            ) else { throw GenerationError.cannotMuxAudio }
+            let audioRange = try await audioTrack.load(.timeRange)
+            let range = CMTimeRangeGetIntersection(audioRange, CMTimeRange(start: .zero, duration: duration))
+            if range.duration.seconds > 0 {
+                try compositionAudioTrack.insertTimeRange(range, of: audioTrack, at: range.start)
+            }
         }
 
         guard let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough),

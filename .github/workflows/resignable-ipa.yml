@@ -119,15 +119,15 @@ jobs:
         run: |
           set -euo pipefail
           cd package
-          /usr/bin/zip -qry ../Irfaali-1.0.0-resignable.ipa Payload
+          /usr/bin/zip -qry ../Irfaali-1.1-resignable.ipa Payload
           cd ..
-          test -s Irfaali-1.0.0-resignable.ipa
+          test -s Irfaali-1.1-resignable.ipa
 
       - name: Validate IPA
         shell: bash
         run: |
           set -euo pipefail
-          IPA="$PWD/Irfaali-1.0.0-resignable.ipa"
+          IPA="$PWD/Irfaali-1.1-resignable.ipa"
           VALIDATE="$PWD/validation"
           rm -rf "$VALIDATE"
           mkdir -p "$VALIDATE"
@@ -149,7 +149,7 @@ jobs:
           EXE="$APP/$EXE_NAME"
 
           test -n "$BUNDLE_ID"
-          test "$VERSION" = "1.0.0"
+          test "$VERSION" = "1.1"
           test -n "$BUILD"
           test -n "$MIN_OS"
           test "$PLATFORM" = "iphoneos"
@@ -187,8 +187,8 @@ jobs:
       - name: Upload re-signable IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Irfaali-1.0.0-resignable
-          path: Irfaali-1.0.0-resignable.ipa
+          name: Irfaali-1.1-resignable
+          path: Irfaali-1.1-resignable.ipa
           if-no-files-found: error
           retention-days: 90
 
@@ -197,13 +197,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="v1.0.0-resignable"
-          TITLE="v1.0.0-resignable"
+          TAG="v1.1-resignable"
+          TITLE="v1.1-resignable"
           NOTES="Re-signable IPA for manual signing with a compatible Apple certificate and provisioning profile."
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" Irfaali-1.0.0-resignable.ipa --clobber
+            gh release upload "$TAG" Irfaali-1.1-resignable.ipa --clobber
           else
-            gh release create "$TAG" Irfaali-1.0.0-resignable.ipa --title "$TITLE" --notes "$NOTES" --target "$GITHUB_SHA"
+            gh release create "$TAG" Irfaali-1.1-resignable.ipa --title "$TITLE" --notes "$NOTES" --target "$GITHUB_SHA"
           fi
 
       - name: Verify published release asset
@@ -211,5 +211,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view v1.0.0-resignable --json url,tagName,assets
-          gh release view v1.0.0-resignable --json assets --jq '.assets[].name' | grep -qx 'Irfaali-1.0.0-resignable.ipa'
+          gh release view v1.1-resignable --json url,tagName,assets
+          gh release view v1.1-resignable --json assets --jq '.assets[].name' | grep -qx 'Irfaali-1.1-resignable.ipa'

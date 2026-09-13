@@ -21,12 +21,15 @@ final class StudioViewModel: ObservableObject {
     }
 
     enum ProcessingError: LocalizedError {
+        case outputMismatch(String)
         case frameGenerationDeviceBlocked([String])
         case frameGenerationVerificationFailed([String])
         case frameGenerationVerificationUnavailable(String)
 
         var errorDescription: String? {
             switch self {
+            case .outputMismatch(let reason):
+                return "ما اعتمدنا الملف لأن النتيجة ما طابقت الطلب: \(reason)"
             case .frameGenerationDeviceBlocked(let reasons):
                 return "محرك الفريمات وقف قبل يبدأ عشان نحمي الجودة والجهاز: \(reasons.joined(separator: " · "))"
             case .frameGenerationVerificationFailed(let failures):
@@ -53,6 +56,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var validationMessage: String?
     @Published private(set) var saveState: SaveState = .idle
     @Published var errorMessage: String?
+    @Published var frameGenerationTrialEnabled = false
 
     private let analyzer = VideoAnalyzer()
     private let exporter = VideoExportService()
@@ -61,12 +65,15 @@ final class StudioViewModel: ObservableObject {
     private let photoSaver = PhotoLibrarySaver()
     private var activeProcessingTask: Task<ExportOutcome?, Never>?
 
-    /// Frame generation stays gated in the public Studio button until device QA is
-    /// complete. The real engine is already wired into the production processing
-    /// task so QA/internal calls exercise the exact path instead of a mock.
+    /// Explicit opt-in is only compiled into the physical-device QA candidate.
     var canProcess: Bool {
-        guard let info else { return false }
-        return !settings.needsFrameGeneration(for: info) && !isAnalyzing && !isProcessing
+        guard let info, !isAnalyzing, !isProcessing else { return false }
+        if !settings.needsFrameGeneration(for: info) { return true }
+        #if IRFAALI_DEVICE_QA
+        return frameGenerationTrialEnabled && frameGenerationPlan != nil && frameGenerationReadiness?.canStart == true
+        #else
+        return false
+        #endif
     }
 
     var canCancelProcessing: Bool {
@@ -138,6 +145,8 @@ final class StudioViewModel: ObservableObject {
 
     func importVideo(url: URL) async {
         cancelProcessing()
+        if let activeProcessingTask { _ = await activeProcessingTask.value }
+        frameGenerationTrialEnabled = false
         isAnalyzing = true
         processingStage = .idle
         generatedFrameCount = 0
@@ -368,9 +377,17 @@ final class StudioViewModel: ObservableObject {
 
             do {
                 let analyzedOutput = try await analyzer.analyze(url: finalResult.url)
+                if let mismatch = OutputVerification.mismatch(source: info, output: analyzedOutput, settings: settings) {
+                    throw ProcessingError.outputMismatch(mismatch)
+                }
                 outputInfo = analyzedOutput
 
                 if let generationResult {
+                    let encodedCount = try await VideoSampleAudit.frameCount(url: finalResult.url)
+                    let expectedCount = generationResult.sourceFrameCount + generationResult.generatedFrameCount + generationResult.sceneCutFallbackFrameCount
+                    guard encodedCount == expectedCount else {
+                        throw ProcessingError.outputMismatch("Expected \(expectedCount) encoded frames; found \(encodedCount).")
+                    }
                     let verification = FrameGenerationVerification.verify2x(
                         sourceFrameCount: generationResult.sourceFrameCount,
                         generatedFrameCount: generationResult.generatedFrameCount,
@@ -391,12 +408,8 @@ final class StudioViewModel: ObservableObject {
             } catch let error as ProcessingError {
                 throw error
             } catch {
-                validationMessage = "تم إنشاء الملف، لكن تعذر التحقق التقني بعد التصدير: \(error.localizedDescription)"
-                if wantsFrameGeneration {
-                    try? FileManager.default.removeItem(at: finalResult.url)
-                    outputInfo = nil
-                    throw ProcessingError.frameGenerationVerificationUnavailable(error.localizedDescription)
-                }
+                outputInfo = nil
+                throw ProcessingError.outputMismatch(error.localizedDescription)
             }
 
             try Task.checkCancellation()

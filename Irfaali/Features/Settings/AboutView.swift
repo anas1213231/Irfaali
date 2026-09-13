@@ -25,22 +25,12 @@ struct AboutView: View {
     private var identityHero: some View {
         PremiumSurface {
             VStack(spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(IrfaaliTheme.emerald.opacity(0.55))
-                        .frame(width: 108, height: 108)
-                        .blur(radius: 18)
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 94, height: 94)
-                        .overlay {
-                            Circle().stroke(.primary.opacity(0.08), lineWidth: 1)
-                        }
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 58, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                }
+                Image("OfficialLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .padding(16)
+                    .accessibilityLabel(AppBranding.appName)
 
                 VStack(spacing: 6) {
                     Text(AppBranding.appName)

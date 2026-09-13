@@ -10,13 +10,13 @@ struct PremiumSurface<Content: View>: View {
 
     var body: some View {
         content
-            .padding(18)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(20)
+            .background(colorScheme == .dark ? Color(white: 0.085) : .white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(borderColor, lineWidth: 0.8)
             }
-            .shadow(color: shadowColor, radius: colorScheme == .dark ? 22 : 14, y: colorScheme == .dark ? 13 : 8)
+            .shadow(color: shadowColor, radius: 12, y: 5)
     }
 
     private var borderColor: Color {

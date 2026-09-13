@@ -215,12 +215,12 @@ final class VideoExportService {
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
-            ) else { continue }
-            try? compositionAudioTrack.insertTimeRange(
-                CMTimeRange(start: .zero, duration: duration),
-                of: sourceAudioTrack,
-                at: .zero
-            )
+            ) else { throw ExportError.cannotCreateCompositionTrack }
+            let audioRange = try await sourceAudioTrack.load(.timeRange)
+            let range = CMTimeRangeGetIntersection(audioRange, CMTimeRange(start: .zero, duration: duration))
+            if range.duration.seconds > 0 {
+                try compositionAudioTrack.insertTimeRange(range, of: sourceAudioTrack, at: range.start)
+            }
         }
 
         let naturalSize = try await sourceVideoTrack.load(.naturalSize)
@@ -253,7 +253,7 @@ final class VideoExportService {
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = targetSize
         let safeFPS = max(1, min(outputFPS, 240))
-        videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(safeFPS.rounded()))
+        videoComposition.frameDuration = CMTime(seconds: 1 / safeFPS, preferredTimescale: 60_000)
         videoComposition.instructions = [instruction]
 
         try Task.checkCancellation()
@@ -266,12 +266,8 @@ final class VideoExportService {
         targetSize: CGSize
     ) -> String {
         let codec = resolvedCodec(settings: settings, info: info)
-        let longEdge = max(targetSize.width, targetSize.height)
-
-        if longEdge >= 3800 {
-            return codec == .hevc ? AVAssetExportPresetHEVC3840x2160 : AVAssetExportPreset3840x2160
-        }
-
+        // The composition owns the output dimensions, including portrait 4K.
+        // A fixed landscape size preset must not constrain that render size.
         return codec == .hevc ? AVAssetExportPresetHEVCHighestQuality : AVAssetExportPresetHighestQuality
     }
 

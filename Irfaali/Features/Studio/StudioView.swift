@@ -6,6 +6,8 @@ struct StudioView: View {
     @StateObject private var model = StudioViewModel()
     @State private var photoItem: PhotosPickerItem?
     @State private var showFileImporter = false
+    @State private var showSourceDetails = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var preferences: AppPreferences
@@ -44,7 +46,9 @@ struct StudioView: View {
             }
         }
         .navigationTitle(AppBranding.appName)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollIndicators(.hidden)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.25) : nil, value: model.info?.url)
         .sensoryFeedback(.success, trigger: model.lastOutcome?.url) { _, _ in
             preferences.hapticsEnabled
         }
@@ -90,80 +94,55 @@ struct StudioView: View {
     }
 
     private var hero: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(preferences.text(ar: "محرك ارفعلي", en: "IRFAALI ENGINE"))
-                            .font(.caption2.weight(.bold))
-                            .tracking(preferences.isArabic ? 0.3 : 2.2)
-                            .foregroundStyle(IrfaaliTheme.accent)
-
-                        Text(preferences.text(ar: "ارفع فيديو يا وحش 🔥", en: "Drop in a video."))
-                            .font(IrfaaliTheme.titleFont(30))
-
-                        Text(
-                            preferences.text(
-                                ar: "نفحص المصدر أول، وبعدها أنت تتحكم بالدقة والفريمات والترميز والتحسين. كل نتيجة نرجع نفحصها بعد التصدير.",
-                                en: "We inspect the source first, then you control resolution, frame rate, codec and enhancement. Every export is verified again after processing."
-                            )
-                        )
+        VStack(alignment: .leading, spacing: 20) {
+            if model.info == nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(preferences.text(ar: "كل لقطة، بأفضل شكل.", en: "Make every frame count."))
+                        .font(.system(size: 28, weight: .bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(preferences.text(ar: "أضف فيديوك واضبطه على ذوقك.", en: "Add a video and make it yours."))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
+                }
+                .padding(.top, 18)
+            }
 
-                    Spacer(minLength: 6)
-
-                    ZStack {
-                        Circle()
-                            .fill(IrfaaliTheme.accent.opacity(0.12))
-                            .frame(width: 54, height: 54)
-
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 43, weight: .semibold))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(IrfaaliTheme.accent)
+            PhotosPicker(selection: $photoItem, matching: .videos) {
+                VStack(spacing: 16) {
+                    Image(systemName: model.info == nil ? "plus" : "arrow.triangle.2.circlepath")
+                        .font(.system(size: 26, weight: .semibold))
+                        .frame(width: 60, height: 60)
+                        .background(IrfaaliTheme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 20))
+                    Text(preferences.text(ar: model.info == nil ? "أضف الفيديو" : "غيّر الفيديو", en: model.info == nil ? "Add Video" : "Change Video"))
+                        .font(.title2.weight(.bold))
+                    if model.info == nil {
+                        Text(preferences.text(ar: "من مكتبة الصور", en: "From your photo library"))
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
                     }
                 }
-
-                HStack(spacing: 8) {
-                    statusPill(icon: "bolt.fill", ar: "محلي", en: "ON DEVICE")
-                    statusPill(icon: "lock.fill", ar: "خصوصي", en: "PRIVATE")
-                    statusPill(icon: "sparkles", ar: "مجاني", en: "FREE")
-                }
-
-                HStack(spacing: 10) {
-                    PhotosPicker(selection: $photoItem, matching: .videos) {
-                        Label(
-                            preferences.text(ar: "اختار فيديو", en: "Choose Video"),
-                            systemImage: "photo.on.rectangle.angled"
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(PremiumPrimaryButtonStyle())
-
-                    Button {
-                        showFileImporter = true
-                    } label: {
-                        Image(systemName: "folder.fill")
-                            .frame(width: 48, height: 48)
-                    }
-                    .accessibilityLabel(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"))
-                    .buttonStyle(PremiumSecondaryButtonStyle())
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, model.info == nil ? 30 : 16)
+                .foregroundStyle(.primary)
+                .background(IrfaaliTheme.accent.opacity(0.055), in: RoundedRectangle(cornerRadius: 26))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26)
+                        .stroke(IrfaaliTheme.accent.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [7, 6]))
                 }
             }
-        }
-        .padding(.top, 8)
-    }
+            .buttonStyle(.plain)
+            .disabled(model.isProcessing || model.isAnalyzing)
 
-    private func statusPill(icon: String, ar: String, en: String) -> some View {
-        Label(preferences.text(ar: ar, en: en), systemImage: icon)
-            .font(.caption2.weight(.bold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(IrfaaliTheme.accent.opacity(0.09), in: Capsule())
-            .foregroundStyle(.secondary)
+            Button { showFileImporter = true } label: {
+                Label(preferences.text(ar: "أو اختاره من الملفات", en: "Or choose from Files"), systemImage: "folder")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .tint(.primary)
+            .disabled(model.isProcessing || model.isAnalyzing)
+        }
+        .padding(.bottom, 6)
     }
 
     private var analyzingCard: some View {
@@ -225,6 +204,9 @@ struct StudioView: View {
                         value: "\(info.width)×\(info.height)"
                     )
                     MetricTile(icon: "speedometer", title: "FPS", value: IrfaaliFormatters.fps(info.sourceFPS))
+                }
+                DisclosureGroup(preferences.text(ar: "تفاصيل الفيديو", en: "Video Details"), isExpanded: $showSourceDetails) {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     MetricTile(
                         icon: "film.stack",
                         title: preferences.text(ar: "الكودك", en: "Video Codec"),
@@ -255,10 +237,12 @@ struct StudioView: View {
                         title: preferences.text(ar: "الصوت", en: "Audio"),
                         value: audioSummary(info)
                     )
+                    }
+                    .padding(.top, 12)
                 }
-
+                .font(.subheadline.weight(.semibold))
                 Divider().opacity(0.22)
-                compatibilityRow(info)
+
             }
         }
     }
@@ -277,9 +261,9 @@ struct StudioView: View {
                     .frame(width: 46, height: 46)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(preferences.text(ar: "غرفة التحكم", en: "Processing Studio"))
+                        Text(preferences.text(ar: "اضبط فيديوك", en: "Processing Studio"))
                             .font(.headline.weight(.bold))
-                        Text(preferences.text(ar: "مو أسماء وهمية — هذي إعدادات الملف الناتج.", en: "These settings drive the actual output file."))
+                        Text(preferences.text(ar: "اختار المقاس والحركة واللمسة الأخيرة.", en: "Choose the size, motion and finishing touches."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -322,12 +306,15 @@ struct StudioView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 86), spacing: 8)], spacing: 8) {
                     ForEach(VideoProcessingSettings.FrameRate.allCases) { frameRate in
                         let needsAI = frameRate.requestedFPS.map { $0 > info.sourceFPS + 0.5 } ?? false
+                        let supported = !needsAI || frameRate.requestedFPS.flatMap {
+                            FrameGenerationPlan.make(sourceFPS: info.sourceFPS, targetFPS: $0)
+                        } != nil
 
                         settingChoice(
                             title: frameRate.title(isArabic: preferences.isArabic),
                             selected: model.settings.frameRate == frameRate,
-                            enabled: !model.isProcessing,
-                            badge: needsAI ? "AI 2×" : nil
+                            enabled: !model.isProcessing && supported,
+                            badge: needsAI && supported ? "2×" : nil
                         ) {
                             model.settings.frameRate = frameRate
                         }
@@ -398,7 +385,7 @@ struct StudioView: View {
                     } label: {
                         HStack {
                             Image(systemName: "sparkles.rectangle.stack.fill")
-                            Text(preferences.text(ar: "يلا اضبطه 🔥", en: "Process Video"))
+                            Text(preferences.text(ar: "ابدأ المعالجة", en: "Process Video"))
                             Spacer()
                             Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
                         }
@@ -452,7 +439,7 @@ struct StudioView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 42)
+            .frame(height: 46)
             .padding(.horizontal, 8)
             .background(
                 selected ? IrfaaliTheme.accent.opacity(0.18) : Color.primary.opacity(0.045),
@@ -481,8 +468,8 @@ struct StudioView: View {
                     .foregroundStyle(IrfaaliTheme.accent)
                 Text(
                     preferences.text(
-                        ar: "هذي معالجة فعلية على كل فريم باستخدام Core Image. إذا حركت أي سلايدر يتحول الوضع إلى يدوي تلقائي.",
-                        en: "These controls run a real per-frame Core Image pass. Moving any slider switches the profile to Custom automatically."
+                        ar: "اضبط التحسين بهدوء؛ الزيادة ممكن تبالغ في الحدة أو اللون.",
+                        en: "Adjust gently. Strong settings can exaggerate sharpness or color."
                     )
                 )
                 .font(.caption)
@@ -526,94 +513,33 @@ struct StudioView: View {
     }
 
     private func aiFrameNotice(_ info: VideoAssetInfo) -> some View {
-        let requestedFPS = model.settings.frameRate.requestedFPS ?? info.sourceFPS
-        let plan = model.frameGenerationPlan
-        let readiness = model.frameGenerationReadiness
-        let isSupported2x = plan?.strategy == .opticalFlow2x
-        let tone: Color = readiness?.level == .blocked ? .red : .orange
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(tone.opacity(0.12))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "brain.head.profile.fill")
-                        .font(.title3)
-                        .foregroundStyle(tone)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(preferences.text(ar: "Frame Generation حقيقي 🧠⚡️", en: "Real Frame Generation 🧠⚡️"))
-                        .font(.subheadline.bold())
-
-                    Text(
-                        preferences.text(
-                            ar: isSupported2x
-                                ? "المسار \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) مبني فعلًا: Vision Optical Flow + Metal Motion Warp + ترميز فريمات جديدة. ما فيه تكرار فريمات."
-                                : "المسار \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) مو من مسارات 2× المدعومة في v1، لذلك ما راح نزور النتيجة.",
-                            en: isSupported2x
-                                ? "The \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) path is genuinely implemented with Vision optical flow, Metal motion warp and newly encoded frames — no duplication trick."
-                                : "The \(Int(info.sourceFPS.rounded()))→\(Int(requestedFPS.rounded())) path is not a supported 2× v1 route, so Irfaali will not fake the result."
-                        )
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            HStack(spacing: 8) {
-                generationStatusPill(
-                    text: isSupported2x ? "ENGINE WIRED" : "UNSUPPORTED RATIO",
-                    systemImage: isSupported2x ? "cpu.fill" : "xmark.circle.fill",
-                    tone: tone
-                )
-
-                if let readiness {
-                    generationStatusPill(
-                        text: readiness.level == .ready ? "DEVICE READY" : readiness.level == .caution ? "DEVICE CHECK" : "DEVICE BLOCK",
-                        systemImage: readiness.level == .blocked ? "exclamationmark.triangle.fill" : "iphone.gen3",
-                        tone: readiness.level == .ready ? IrfaaliTheme.accent : tone
-                    )
-                }
-
-                generationStatusPill(text: "QA LOCK", systemImage: "lock.fill", tone: .secondary)
-            }
-
-            if let readiness, !readiness.reasons.isEmpty {
-                Text(readiness.reasons.map(\.description).joined(separator: " · "))
-                    .font(.caption2)
-                    .foregroundStyle(readiness.level == .blocked ? .red : .secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Text(
-                preferences.text(
-                    ar: "المحرك مربوط داخليًا، لكن زر التصدير العالي مقفول مؤقتًا لين نخلص اختبار الآيفون الحقيقي: جودة الحركة، الحرارة، الذاكرة وتزامن الصوت.",
-                    en: "The engine is wired internally, but public high-FPS export stays QA-locked until real-iPhone motion quality, thermals, memory and audio-sync checks pass."
-                )
-            )
+        VStack(alignment: .leading, spacing: 10) {
+            Label(preferences.text(ar: "توليد فريمات · تجريبي", en: "Frame Generation · Experimental"), systemImage: "square.stack.3d.up")
+                .font(.subheadline.weight(.semibold))
+            Text(preferences.text(
+                ar: "المتاح حاليًا مضاعفة الفريمات: 30 إلى 60 أو 60 إلى 120. جودة الحركة تعتمد على المقطع، خصوصًا عند الحركة السريعة.",
+                en: "Supports 2× generation: 30 to 60 or 60 to 120. Motion quality varies, especially in fast scenes."
+            ))
             .font(.caption)
             .foregroundStyle(.secondary)
+            #if IRFAALI_DEVICE_QA
+            Toggle(preferences.text(ar: "جرّب التوليد على هذا الفيديو", en: "Try generation on this video"), isOn: $model.frameGenerationTrialEnabled)
+                .font(.subheadline.weight(.medium))
+                .tint(IrfaaliTheme.accent)
+                .disabled(model.isProcessing)
+            #else
+            Text(preferences.text(ar: "متاح للتجربة في نسخة اختبار الجهاز.", en: "Available in the device testing build."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            #endif
+            if let readiness = model.frameGenerationReadiness, !readiness.reasons.isEmpty {
+                Text(readiness.reasons.map(\.description).joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
         }
-        .padding(14)
-        .background(tone.opacity(0.07), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(tone.opacity(0.16), lineWidth: 1)
-        }
-    }
-
-    private func generationStatusPill(text: String, systemImage: String, tone: Color) -> some View {
-        Label(text, systemImage: systemImage)
-            .font(.system(size: 9, weight: .black, design: .rounded))
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(tone.opacity(0.09), in: Capsule())
-            .foregroundStyle(tone)
+        .padding(16)
+        .background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private func outputTargetCard(_ info: VideoAssetInfo) -> some View {
@@ -632,7 +558,7 @@ struct StudioView: View {
             .frame(width: 52, height: 52)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(preferences.text(ar: needsGeneration ? "الهدف المطلوب" : "الهدف الحقيقي", en: needsGeneration ? "Requested Target" : "Verified Target"))
+                Text(preferences.text(ar: "إعدادات الناتج", en: "Output Settings"))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
 
@@ -643,7 +569,7 @@ struct StudioView: View {
                     Text(model.settings.codec.title(isArabic: preferences.isArabic))
                     if needsGeneration {
                         Text("•")
-                        Text("AI 2×")
+                        Text("2×")
                     }
                     if model.enhancement.isEnabled {
                         Text("•")
@@ -652,6 +578,11 @@ struct StudioView: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if size.width > CGFloat(info.width) || size.height > CGFloat(info.height) {
+                    Text(preferences.text(ar: "تكبير للصورة؛ التفاصيل تعتمد على جودة المصدر.", en: "Upscaled image; detail depends on the source."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
@@ -765,7 +696,7 @@ struct StudioView: View {
         case .exporting:
             return preferences.text(ar: "الدقة والترميز تحت الشغل", en: "Resolution and codec pass")
         case .generatingFrames:
-            return preferences.text(ar: "Vision + Metal يشتغلون الحين", en: "Vision + Metal are synthesizing motion")
+            return preferences.text(ar: "نحسب الحركة بين الفريمات", en: "Synthesizing motion between frames")
         case .enhancing:
             return preferences.text(ar: "تنظيف وتفاصيل على كل فريم", en: "Per-frame cleanup and detail pass")
         case .verifying:
@@ -825,7 +756,7 @@ struct StudioView: View {
                     Spacer()
 
                     if model.outputInfo != nil {
-                        Text("VERIFIED")
+                        Text(preferences.text(ar: "تم الفحص", en: "Checked"))
                             .font(.caption2.bold())
                             .tracking(1.2)
                             .foregroundStyle(IrfaaliTheme.accent)
@@ -842,7 +773,7 @@ struct StudioView: View {
                 if let verification = model.frameGenerationVerification, verification.passed {
                     Label(
                         preferences.text(
-                            ar: "Frame Generation Verified · \(verification.generatedFrameCount) فريم جديد",
+                            ar: "فحص الفريمات · \(verification.generatedFrameCount) فريم مولّد",
                             en: "Frame Generation Verified · \(verification.generatedFrameCount) new frames"
                         ),
                         systemImage: "checkmark.shield.fill"

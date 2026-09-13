@@ -34,3 +34,17 @@ Download the `Irfaali-device-qa-<commit>` artifact from the successful Actions r
 6. Only remove the public frame-generation gate after the device acceptance requirements pass.
 
 The public frame-generation control remains gated. A green simulator run is not evidence of physical-device optical-flow quality.
+
+## Version 1.1 candidate
+
+The DeviceQA configuration is optimized as Release and defines IRFAALI_DEVICE_QA.
+Only this build exposes an explicit, per-import experimental generation toggle.
+Normal Release builds retain the public gate. This does not mark physical-device
+acceptance as passed. Test 30→60 and 60→120 with this toggle; other ratios remain
+unavailable. The output must match requested dimensions/FPS/duration/audio, and
+frame-generated files are read back to check the encoded sample count.
+
+A 4K selection means spatial resizing, not recovery of missing source detail.
+The integration suite exports and decodes an actual portrait 2160×3840 file.
+The 1.1 candidate also includes a shorter launch, uncropped official-logo layout,
+a larger video picker, visual theme choices, and removal of access/free banners.
