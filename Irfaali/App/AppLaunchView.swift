@@ -37,10 +37,10 @@ struct AppLaunchView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
-                Image("OfficialLogo")
+                Image("LaunchLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 100, height: 100)
+                    .frame(width: 240, height: 240)
                     .scaleEffect(logoIsVisible ? 1 : 0.96)
                     .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
@@ -48,13 +48,13 @@ struct AppLaunchView: View {
                 VStack(spacing: 6) {
                     Text(preferences.text(ar: "ارفعلي", en: "Irfaali"))
                         .font(.system(size: 28, weight: .semibold, design: .default))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(red: 0.06, green: 0.14, blue: 0.23))
                         .opacity(wordmarkIsVisible ? 1 : 0)
                         .offset(y: wordmarkIsVisible ? 0 : 8)
 
                     Text(preferences.text(ar: "ارفعها. واضبطها.", en: "Upload. Refine. Done."))
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(Color(red: 0.29, green: 0.36, blue: 0.43))
                         .opacity(wordmarkIsVisible ? 1 : 0)
                         .offset(y: wordmarkIsVisible ? 0 : 8)
                 }
@@ -102,4 +102,3 @@ struct AppLaunchView: View {
         }
     }
 }
-
