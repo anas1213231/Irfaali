@@ -102,3 +102,48 @@ jobs:
             xcrun simctl shutdown "$SIMULATOR_UDID" || true
             xcrun simctl delete "$SIMULATOR_UDID" || true
           fi
+
+      - name: Build Release for iPhone
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Irfaali.xcodeproj \
+            -scheme Irfaali \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/IrfaaliDeviceBuild" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package device QA IPA
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/IrfaaliDeviceBuild/Build/Products/Release-iphoneos/Irfaali.app"
+          PACKAGE="$RUNNER_TEMP/IrfaaliDevicePackage"
+          test -d "$APP"
+          mkdir -p "$PACKAGE/Payload"
+          cp -R "$APP" "$PACKAGE/Payload/Irfaali.app"
+          INFO="$PACKAGE/Payload/Irfaali.app/Info.plist"
+          EXE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO")
+          EXE="$PACKAGE/Payload/Irfaali.app/$EXE_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$INFO")" = iphoneos
+          test -x "$EXE"
+          lipo -archs "$EXE" | tr ' ' '\n' | grep -qx arm64
+          cd "$PACKAGE"
+          /usr/bin/zip -qry Irfaali-device-qa.ipa Payload
+          unzip -t Irfaali-device-qa.ipa
+          printf '%s\n' "Commit: $GITHUB_SHA" "Unsigned device QA build. Requires Apple signing before installation." > BUILD-INFO.txt
+          shasum -a 256 Irfaali-device-qa.ipa >> BUILD-INFO.txt
+
+      - name: Upload device QA IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Irfaali-device-qa-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/IrfaaliDevicePackage/Irfaali-device-qa.ipa
+            ${{ runner.temp }}/IrfaaliDevicePackage/BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 14
