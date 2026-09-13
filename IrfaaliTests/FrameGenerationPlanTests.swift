@@ -25,7 +25,7 @@ final class FrameGenerationPlanTests: XCTestCase {
     func testLowerTargetNeedsNoGeneration() {
         let plan = FrameGenerationPlan.make(sourceFPS: 60, targetFPS: 30)
 
-        XCTAssertEqual(plan?.strategy, .none)
+        XCTAssertEqual(plan?.strategy, FrameGenerationPlan.Strategy.none)
         XCTAssertEqual(plan?.generatedFramesPerSourceGap, 0)
         XCTAssertEqual(plan?.targetFPS, 30)
     }
