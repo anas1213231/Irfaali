@@ -8,6 +8,7 @@ struct StudioView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showFileImporter = false
     @State private var showSourceDetails = false
+    @State private var hasAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var preferences: AppPreferences
@@ -18,11 +19,12 @@ struct StudioView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    pageHeader
+                    studioIntro
                     importCard
 
                     if model.isAnalyzing {
                         analyzingCard
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     if let info = model.info {
@@ -32,30 +34,48 @@ struct StudioView: View {
 
                     if let outcome = model.lastOutcome {
                         successCard(outcome)
+                            .transition(.scale(scale: 0.98).combined(with: .opacity))
                     }
 
                     if let message = model.validationMessage {
                         statusCard(message, icon: "exclamationmark.triangle.fill", color: .orange)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     if let message = model.errorMessage {
                         statusCard(message, icon: "exclamationmark.octagon.fill", color: .red)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.top, 2)
                 .padding(.bottom, 36)
+                .opacity(hasAppeared ? 1 : 0)
+                .offset(y: hasAppeared ? 0 : 10)
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle(AppBranding.appName)
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(preferences.text(ar: "استوديو الفيديو", en: "Video Studio"))
+        .navigationBarTitleDisplayMode(.large)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.info?.url)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isAnalyzing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isProcessing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.lastOutcome?.url)
         .sensoryFeedback(.success, trigger: model.lastOutcome?.url) { _, _ in
             preferences.hapticsEnabled
         }
         .sensoryFeedback(.success, trigger: model.saveState == .saved) { _, _ in
             preferences.hapticsEnabled
+        }
+        .onAppear {
+            guard !hasAppeared else { return }
+            if preferences.animationsEnabled && !reduceMotion {
+                withAnimation(.easeOut(duration: 0.42).delay(0.05)) {
+                    hasAppeared = true
+                }
+            } else {
+                hasAppeared = true
+            }
         }
         .onChange(of: photoItem) { _, newValue in
             guard let newValue else { return }
@@ -95,16 +115,18 @@ struct StudioView: View {
         }
     }
 
-    private var pageHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(preferences.text(ar: "استوديو الفيديو", en: "Video Studio"))
-                .font(.system(size: 30, weight: .bold, design: .default))
-                .foregroundStyle(.primary)
+    private var studioIntro: some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: "sparkles.tv.fill")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(IrfaaliTheme.accent)
+                .frame(width: 34, height: 34)
+                .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
 
             Text(
                 preferences.text(
-                    ar: "حلّل الفيديو، اضبط الناتج، واحفظ نسخة جاهزة.",
-                    en: "Inspect the source, set the output, and save a ready copy."
+                    ar: "ارفع فيديوك، خلّ ارفعلي يقرأه، وبعدها اختَر الناتج اللي يناسبك.",
+                    en: "Add a video, let Irfaali inspect it, then choose the output that fits."
                 )
             )
             .font(.subheadline)
@@ -112,6 +134,7 @@ struct StudioView: View {
             .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 3)
     }
 
     private var importCard: some View {
@@ -122,35 +145,35 @@ struct StudioView: View {
         )
 
         return PremiumSurface {
-            VStack(alignment: .leading, spacing: 15) {
-                HStack(spacing: 10) {
-                    Image(systemName: hasVideo ? "film.fill" : "video.badge.plus")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(IrfaaliTheme.accent)
-
-                    Text(preferences.text(ar: "مصدر الفيديو", en: "Video Source"))
-                        .font(.headline.weight(.bold))
-
-                    Spacer()
-
-                    if hasVideo {
-                        Text(preferences.text(ar: "محدد", en: "Selected"))
-                            .font(.caption.weight(.semibold))
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(IrfaaliTheme.accent.opacity(0.14))
+                        Image(systemName: hasVideo ? "film.fill" : "video.badge.plus")
+                            .font(.headline.weight(.semibold))
                             .foregroundStyle(IrfaaliTheme.accent)
                     }
+                    .frame(width: 42, height: 42)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(preferences.text(ar: "مصدر الفيديو", en: "Video source"))
+                            .font(.headline.weight(.bold))
+                        Text(
+                            preferences.text(
+                                ar: hasVideo ? "بدّل المقطع إذا تبي." : "اختَر مقطع من الصور أو الملفات.",
+                                en: hasVideo ? "Swap the clip whenever you need." : "Choose a clip from Photos or Files."
+                            )
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
                 }
 
-                Text(
-                    preferences.text(
-                        ar: "نقرأ خصائص الملف أولًا قبل أن نبدأ المعالجة.",
-                        en: "We read the file properties before processing starts."
-                    )
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
                 PhotosPicker(selection: $photoItem, matching: .videos) {
-                    Label(title, systemImage: hasVideo ? "arrow.triangle.2.circlepath" : "plus.circle.fill")
+                    Label(title, systemImage: hasVideo ? "arrow.triangle.2.circlepath" : "plus")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(PremiumPrimaryButtonStyle())
@@ -159,11 +182,15 @@ struct StudioView: View {
                 Button {
                     showFileImporter = true
                 } label: {
-                    Label(
-                        preferences.text(ar: "اختيار من تطبيق الملفات", en: "Choose from Files"),
-                        systemImage: "folder"
-                    )
-                    .frame(maxWidth: .infinity)
+                    HStack(spacing: 9) {
+                        Image(systemName: "folder")
+                        Text(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"))
+                        Spacer()
+                        Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(PremiumSecondaryButtonStyle())
                 .disabled(model.isProcessing || model.isAnalyzing)
@@ -227,7 +254,7 @@ struct StudioView: View {
                     SourceMetric(
                         icon: "rectangle.portrait",
                         title: preferences.text(ar: "الدقة", en: "Resolution"),
-                        value: "(info.width)×(info.height)"
+                        value: "\(info.width)×\(info.height)"
                     )
                     SourceMetric(
                         icon: "speedometer",
@@ -296,20 +323,21 @@ struct StudioView: View {
 
     private func processingCard(_ info: VideoAssetInfo) -> some View {
         PremiumSurface {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "slider.horizontal.3")
-                        .font(.title3.weight(.semibold))
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(IrfaaliTheme.accent)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 38, height: 38)
+                        .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(preferences.text(ar: "إعدادات الإخراج", en: "Output Settings"))
+                        Text(preferences.text(ar: "إعدادات الإخراج", en: "Output settings"))
                             .font(.headline.weight(.bold))
                         Text(
                             preferences.text(
-                                ar: "تظهر هنا الخيارات المناسبة للفيديو المحدد.",
-                                en: "Only options supported by this video are shown."
+                                ar: "خيارات تناسب الفيديو اللي اخترته.",
+                                en: "Options that fit the video you chose."
                             )
                         )
                         .font(.caption)
@@ -326,76 +354,100 @@ struct StudioView: View {
                         Text(preferences.text(ar: "موصى به", en: "Recommended"))
                             .font(.caption.weight(.bold))
                             .padding(.horizontal, 10)
-                            .frame(minHeight: 34)
+                            .frame(minHeight: 32)
                     }
                     .buttonStyle(PremiumSecondaryButtonStyle())
                     .disabled(model.isProcessing)
                 }
 
-                sectionDivider
+                settingsDivider
 
-                settingHeader(icon: "rectangle.expand.vertical", ar: "الدقة", en: "Resolution")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 8)], spacing: 8) {
+                settingsMenuRow(
+                    icon: "rectangle.expand.vertical",
+                    title: preferences.text(ar: "الدقة", en: "Resolution"),
+                    value: model.settings.resolution.title(isArabic: preferences.isArabic)
+                ) {
                     ForEach(VideoProcessingSettings.supportedResolutions(for: info)) { resolution in
-                        settingChoice(
-                            title: resolution.title(isArabic: preferences.isArabic),
-                            selected: model.settings.resolution == resolution,
-                            enabled: !model.isProcessing
-                        ) {
+                        Button {
                             model.settings.resolution = resolution
+                        } label: {
+                            Label(
+                                resolution.title(isArabic: preferences.isArabic),
+                                systemImage: model.settings.resolution == resolution ? "checkmark" : "rectangle.portrait"
+                            )
                         }
                     }
                 }
 
-                settingHeader(icon: "speedometer", ar: "الفريمات", en: "Frame Rate")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], spacing: 8) {
+                settingsDivider
+
+                settingsMenuRow(
+                    icon: "speedometer",
+                    title: preferences.text(ar: "الفريمات", en: "Frame rate"),
+                    value: model.settings.frameRate.title(isArabic: preferences.isArabic)
+                ) {
                     ForEach(VideoProcessingSettings.supportedFrameRates(for: info)) { frameRate in
-                        settingChoice(
-                            title: frameRate.title(isArabic: preferences.isArabic),
-                            selected: model.settings.frameRate == frameRate,
-                            enabled: !model.isProcessing
-                        ) {
+                        Button {
                             model.settings.frameRate = frameRate
+                        } label: {
+                            Label(
+                                frameRate.title(isArabic: preferences.isArabic),
+                                systemImage: model.settings.frameRate == frameRate ? "checkmark" : "speedometer"
+                            )
                         }
                     }
                 }
 
-                settingHeader(icon: "cpu", ar: "الترميز", en: "Codec")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
+                settingsDivider
+
+                settingsMenuRow(
+                    icon: "cpu",
+                    title: preferences.text(ar: "الترميز", en: "Codec"),
+                    value: model.settings.codec.title(isArabic: preferences.isArabic)
+                ) {
                     ForEach(VideoProcessingSettings.Codec.allCases) { codec in
-                        settingChoice(
-                            title: codec.title(isArabic: preferences.isArabic),
-                            selected: model.settings.codec == codec,
-                            enabled: !model.isProcessing
-                        ) {
+                        Button {
                             model.settings.codec = codec
+                        } label: {
+                            Label(
+                                codec.title(isArabic: preferences.isArabic),
+                                systemImage: model.settings.codec == codec ? "checkmark" : "cpu"
+                            )
                         }
                     }
                 }
 
-                sectionDivider
+                settingsDivider
 
-                settingHeader(icon: "wand.and.rays", ar: "تحسين الصورة", en: "Image Enhancement")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], spacing: 8) {
+                settingsMenuRow(
+                    icon: "wand.and.rays",
+                    title: preferences.text(ar: "تحسين الصورة", en: "Image enhancement"),
+                    value: model.enhancement.mode.title(isArabic: preferences.isArabic)
+                ) {
                     ForEach(VideoEnhancementSettings.Mode.allCases) { mode in
-                        settingChoice(
-                            title: mode.title(isArabic: preferences.isArabic),
-                            selected: model.enhancement.mode == mode,
-                            enabled: !model.isProcessing
-                        ) {
+                        Button {
                             model.applyEnhancementMode(mode)
+                        } label: {
+                            Label(
+                                mode.title(isArabic: preferences.isArabic),
+                                systemImage: model.enhancement.mode == mode ? "checkmark" : "wand.and.rays"
+                            )
                         }
                     }
                 }
 
                 if model.enhancement.isEnabled {
                     enhancementControls
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 outputSummary(info)
+                    .padding(.top, 16)
 
                 if model.isProcessing {
                     processingProgress
+                        .padding(.top, 12)
                 } else {
                     Button {
                         Task {
@@ -416,8 +468,7 @@ struct StudioView: View {
                         }
                     } label: {
                         HStack(spacing: 9) {
-                            Image(systemName: "play.fill")
-                            Text(preferences.text(ar: "ابدأ المعالجة", en: "Start Processing"))
+                            Text(preferences.text(ar: "ابدأ المعالجة", en: "Start processing"))
                             Spacer()
                             Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
                         }
@@ -426,62 +477,55 @@ struct StudioView: View {
                     .buttonStyle(PremiumPrimaryButtonStyle())
                     .disabled(!model.canProcess)
                     .opacity(model.canProcess ? 1 : 0.48)
+                    .padding(.top, 16)
                 }
             }
         }
     }
 
-    private var sectionDivider: some View {
-        Rectangle()
-            .fill(.secondary.opacity(0.14))
-            .frame(height: 1)
+    private var settingsDivider: some View {
+        Divider()
+            .opacity(0.25)
+            .padding(.leading, 36)
     }
 
-    private func settingHeader(icon: String, ar: String, en: String) -> some View {
-        Label(preferences.text(ar: ar, en: en), systemImage: icon)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(.primary)
-    }
-
-    private func settingChoice(
+    private func settingsMenuRow<MenuContent: View>(
+        icon: String,
         title: String,
-        selected: Bool,
-        enabled: Bool,
-        action: @escaping () -> Void
+        value: String,
+        @ViewBuilder menu: @escaping () -> MenuContent
     ) -> some View {
-        Button {
-            guard enabled else { return }
-            withAnimation(preferences.animationsEnabled ? .snappy : nil) {
-                action()
-            }
+        Menu {
+            menu()
         } label: {
-            HStack(spacing: 6) {
-                Text(title)
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(IrfaaliTheme.accent)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(value)
+                        .font(.caption)
+                        .foregroundStyle(IrfaaliTheme.accent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.up.chevron.down")
                     .font(.caption.weight(.bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
-
-                Spacer(minLength: 2)
-
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 42)
-            .padding(.horizontal, 10)
-            .background(
-                selected ? IrfaaliTheme.accent.opacity(0.15) : Color.primary.opacity(0.04),
-                in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(selected ? IrfaaliTheme.accent.opacity(0.58) : .secondary.opacity(0.12), lineWidth: 1)
-            }
-            .foregroundStyle(enabled ? (selected ? IrfaaliTheme.accent : .primary) : .secondary)
-            .opacity(enabled ? 1 : 0.45)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!enabled)
+        .disabled(model.isProcessing)
     }
 
     private var enhancementControls: some View {
@@ -795,8 +839,7 @@ private struct SourceMetric: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .padding(.vertical, 4)
     }
 }
 

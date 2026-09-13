@@ -1,19 +1,22 @@
 import SwiftUI
 
 enum IrfaaliTheme {
-    static let accent = Color(red: 0.47, green: 0.95, blue: 0.78)
-    static let accentDeep = Color(red: 0.08, green: 0.42, blue: 0.33)
-    static let emerald = Color(red: 0.03, green: 0.28, blue: 0.22)
-    static let ink = Color(red: 0.012, green: 0.035, blue: 0.03)
-    static let secondaryInk = Color(red: 0.04, green: 0.085, blue: 0.073)
-    static let warmWhite = Color(red: 0.985, green: 0.99, blue: 0.985)
+    /// The brand palette is intentionally small: deep navy, ice blue and white.
+    /// Keeping one accent across controls makes the app feel like one product,
+    /// rather than a collection of unrelated cards.
+    static let accent = Color(red: 0.72, green: 0.88, blue: 1.00)
+    static let accentDeep = Color(red: 0.25, green: 0.48, blue: 0.73)
+    static let emerald = Color(red: 0.04, green: 0.15, blue: 0.30)
+    static let ink = Color(red: 0.012, green: 0.025, blue: 0.065)
+    static let secondaryInk = Color(red: 0.035, green: 0.085, blue: 0.17)
+    static let warmWhite = Color(red: 0.985, green: 0.99, blue: 1.00)
 
     /// The same quiet surface used by the native launch screen hand-off.
     static let launchBackground = LinearGradient(
         colors: [
-            Color(red: 0.008, green: 0.035, blue: 0.030),
-            Color(red: 0.018, green: 0.105, blue: 0.082),
-            Color(red: 0.004, green: 0.022, blue: 0.019)
+            Color(red: 0.006, green: 0.014, blue: 0.040),
+            Color(red: 0.025, green: 0.090, blue: 0.19),
+            Color(red: 0.004, green: 0.010, blue: 0.028)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -87,7 +90,7 @@ struct ThemeBackground: View {
             Color.black
         case .dark:
             LinearGradient(
-                colors: [IrfaaliTheme.ink, IrfaaliTheme.secondaryInk, .black],
+                colors: [IrfaaliTheme.ink, IrfaaliTheme.secondaryInk, Color.black],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -95,7 +98,7 @@ struct ThemeBackground: View {
             Color.white
         case .light:
             LinearGradient(
-                colors: [IrfaaliTheme.warmWhite, Color(red: 0.93, green: 0.97, blue: 0.95)],
+                colors: [IrfaaliTheme.warmWhite, Color(red: 0.91, green: 0.95, blue: 1.00)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -108,7 +111,7 @@ struct ThemeBackground: View {
                 )
             } else {
                 LinearGradient(
-                    colors: [IrfaaliTheme.warmWhite, Color(red: 0.93, green: 0.97, blue: 0.95)],
+                    colors: [IrfaaliTheme.warmWhite, Color(red: 0.91, green: 0.95, blue: 1.00)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
