@@ -121,7 +121,7 @@ jobs:
       - name: Package device QA IPA
         run: |
           set -euo pipefail
-          APP="$RUNNER_TEMP/IrfaaliDeviceBuild/Build/Products/Release-iphoneos/Irfaali.app"
+          APP="$RUNNER_TEMP/IrfaaliDeviceBuild/Build/Products/DeviceQA-iphoneos/Irfaali.app"
           PACKAGE="$RUNNER_TEMP/IrfaaliDevicePackage"
           test -d "$APP"
           mkdir -p "$PACKAGE/Payload"
