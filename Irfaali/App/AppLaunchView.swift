@@ -3,15 +3,15 @@ import SwiftUI
 /// A short, deterministic hand-off from the iOS launch screen to the app.
 ///
 /// The launch artwork is deliberately complete: it is never clipped or
-/// recoloured. A single soft settle reveals the logo, followed by the wordmark,
-/// with a minimum presentation time so it remains visible when Reduce Motion is
-/// enabled.
+/// recoloured. A restrained fade and settle reveals the logo, followed by the
+/// wordmark, with a minimum presentation time so it remains visible when Reduce
+/// Motion is enabled.
 struct AppLaunchView: View {
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReady = false
     @State private var hasStarted = false
-    @State private var logoIsVisible = true
+    @State private var logoIsVisible = false
     @State private var wordmarkIsVisible = false
 
     var body: some View {
@@ -41,7 +41,7 @@ struct AppLaunchView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100, height: 100)
-                    .scaleEffect(logoIsVisible ? 1 : 0.98)
+                    .scaleEffect(logoIsVisible ? 1 : 0.96)
                     .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
 
@@ -73,13 +73,13 @@ struct AppLaunchView: View {
             : .milliseconds(250)
 
         if preferences.animationsEnabled && !reduceMotion {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.86)) {
+            withAnimation(.easeOut(duration: 0.34)) {
                 logoIsVisible = true
             }
 
-            do { try await Task.sleep(for: .milliseconds(180)) } catch { return }
+            do { try await Task.sleep(for: .milliseconds(140)) } catch { return }
 
-            withAnimation(.easeOut(duration: 0.28)) {
+            withAnimation(.easeOut(duration: 0.24)) {
                 wordmarkIsVisible = true
             }
         } else {
@@ -102,3 +102,4 @@ struct AppLaunchView: View {
         }
     }
 }
+
