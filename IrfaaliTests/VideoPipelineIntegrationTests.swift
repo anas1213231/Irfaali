@@ -168,7 +168,7 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         } catch {
             #if targetEnvironment(simulator)
             let ns = error as NSError
-            if ns.domain == "com.apple.vis", ns.code == 9 {
+            if ns.code == 9 && ns.domain.localizedCaseInsensitiveCompare("com.apple.Vision") == .orderedSame {
                 throw XCTSkip("Vision optical flow is unavailable in this simulator: \(ns.localizedDescription). Physical iPhone verification remains required.")
             }
             #endif
@@ -365,3 +365,4 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         case failed(String)
     }
 }
+
