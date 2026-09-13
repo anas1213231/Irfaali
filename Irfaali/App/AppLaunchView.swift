@@ -33,7 +33,7 @@ struct AppLaunchView: View {
 
     private var launchScreen: some View {
         ZStack {
-            IrfaaliTheme.launchBackground
+            Color("LaunchBackground")
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {

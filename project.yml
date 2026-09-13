@@ -44,7 +44,6 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         UILaunchScreen:
           UIColorName: LaunchBackground
-          UIImageName: OfficialLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anas1213231.irfaali

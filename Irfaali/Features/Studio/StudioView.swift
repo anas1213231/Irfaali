@@ -16,8 +16,8 @@ struct StudioView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var preferences: AppPreferences
 
-    init(model: StudioViewModel = StudioViewModel()) {
-        _model = StateObject(wrappedValue: model)
+    init(model: StudioViewModel? = nil) {
+        _model = StateObject(wrappedValue: model ?? StudioViewModel())
     }
 
     var body: some View {
@@ -26,8 +26,10 @@ struct StudioView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    if model.info == nil { studioIntro }
-                    importCard
+                    if model.info == nil {
+                        studioIntro
+                        importCard
+                    }
 
                     if model.isAnalyzing {
                         analyzingCard
@@ -54,6 +56,7 @@ struct StudioView: View {
                         }
                         DisclosureGroup(preferences.text(ar: "معلومات المصدر", en: "Source information")) {
                             sourceCard(info)
+                            importCard
                         }
                         .font(.subheadline)
                         .tint(IrfaaliTheme.accent)
@@ -84,6 +87,17 @@ struct StudioView: View {
         }
         .navigationTitle(preferences.text(ar: "ارفعلي", en: "Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if model.info != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    PhotosPicker(selection: $photoItem, matching: .videos) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    .accessibilityLabel(preferences.text(ar: "تغيير الفيديو", en: "Change video"))
+                    .disabled(model.isProcessing || model.isAnalyzing)
+                }
+            }
+        }
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.info?.url)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isAnalyzing)
         .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isProcessing)

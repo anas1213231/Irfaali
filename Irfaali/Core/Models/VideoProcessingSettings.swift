@@ -23,7 +23,7 @@ struct VideoProcessingSettings: Equatable, Sendable {
             switch self {
             case .source: isArabic ? "نفس الدقة" : "Source"
             case .fullHD: "1080p"
-            case .qhd: "2K"
+            case .qhd: "1440p"
             case .ultraHD: "4K"
             }
         }
