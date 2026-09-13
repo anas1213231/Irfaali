@@ -49,9 +49,9 @@ final class AppPreferences: ObservableObject {
 
         if let rawAppearance = defaults.string(forKey: Keys.appearance),
            let savedAppearance = Appearance(rawValue: rawAppearance) {
-            appearance = savedAppearance
+            appearance = (savedAppearance == .light || savedAppearance == .pureWhite) ? .light : .dark
         } else {
-            appearance = .system
+            appearance = .dark
         }
 
         animationsEnabled = defaults.object(forKey: Keys.animationsEnabled) as? Bool ?? true

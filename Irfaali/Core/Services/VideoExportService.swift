@@ -79,7 +79,7 @@ final class VideoExportService {
         let sourceAsset = AVURLAsset(url: info.url)
         let outputFPS = settings.effectiveFPS(for: info)
         let targetSize = settings.targetSize(for: info)
-        let needsGeometryWork = settings.resolution != .source || settings.frameRate != .source
+        let needsGeometryWork = true // Normalize orientation for every encoded output.
 
         let exportAsset: AVAsset
         let videoComposition: AVMutableVideoComposition?
@@ -100,57 +100,12 @@ final class VideoExportService {
 
         try Task.checkCancellation()
 
-        let exportPreset = presetName(settings: settings, info: info, targetSize: targetSize)
-        guard let session = AVAssetExportSession(asset: exportAsset, presetName: exportPreset) else {
-            throw ExportError.cannotCreateSession
-        }
-
         let destination = try uniqueDestination(extension: "mp4")
-        guard session.supportedFileTypes.contains(.mp4) else {
-            throw ExportError.unsupportedOutputType
-        }
-
-        session.outputURL = destination
-        session.outputFileType = .mp4
-        session.shouldOptimizeForNetworkUse = true
-        if let videoComposition {
-            session.videoComposition = videoComposition
-        }
-
-        let monitor = Task {
-            while !Task.isCancelled {
-                progress(Double(session.progress))
-                try? await Task.sleep(nanoseconds: 120_000_000)
-            }
-        }
-
-        defer { monitor.cancel() }
-
-        do {
-            try await withTaskCancellationHandler(operation: {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    session.exportAsynchronously {
-                        switch session.status {
-                        case .completed:
-                            progress(1)
-                            continuation.resume()
-                        case .failed:
-                            continuation.resume(throwing: ExportError.failed(session.error?.localizedDescription ?? "Unknown error"))
-                        case .cancelled:
-                            continuation.resume(throwing: CancellationError())
-                        default:
-                            continuation.resume(throwing: ExportError.failed("Unexpected export state: \(session.status.rawValue)"))
-                        }
-                    }
-                }
-            }, onCancel: {
-                session.cancelExport()
-            })
-            try Task.checkCancellation()
-        } catch {
-            try? FileManager.default.removeItem(at: destination)
-            throw error
-        }
+        try await VideoEncodingService.encode(
+            asset: exportAsset, composition: videoComposition, size: targetSize,
+            fps: outputFPS, hevc: resolvedCodec(settings: settings, info: info) == .hevc,
+            bitrate: info.estimatedBitrate, destination: destination, progress: progress
+        )
 
         let fpsMode: FPSGenerationMode = outputFPS < info.sourceFPS - 0.5 ? .retimed : .preserved
         return ExportOutcome(

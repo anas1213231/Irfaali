@@ -46,7 +46,7 @@ final class AppPreferencesTests: XCTestCase {
         preferences.appearance = .pureBlack
 
         let reloaded = AppPreferences(defaults: defaults)
-        XCTAssertEqual(reloaded.appearance, .pureBlack)
+        XCTAssertEqual(reloaded.appearance, .dark)
         XCTAssertEqual(reloaded.preferredColorScheme, .dark)
     }
 

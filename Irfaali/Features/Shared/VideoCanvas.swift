@@ -41,7 +41,6 @@ final class VideoPlaybackController: ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         asset = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 

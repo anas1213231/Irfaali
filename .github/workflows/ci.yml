@@ -33,7 +33,7 @@ jobs:
           with open("Irfaali/Resources/Info.plist", "rb") as stream:
               info = plistlib.load(stream)
           assert info["CFBundleShortVersionString"] == "1.1", info
-          assert info["CFBundleVersion"] == "3", info
+          assert info["CFBundleVersion"] == "4", info
           PY
 
       - name: Show environment

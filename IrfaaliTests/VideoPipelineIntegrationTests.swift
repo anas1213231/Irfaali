@@ -1,5 +1,6 @@
 @preconcurrency import AVFoundation
 import XCTest
+import AudioToolbox
 @testable import Irfaali
 
 /// Exercises the production services with real, locally generated media.
@@ -99,6 +100,23 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         let frames = try await decodedFrameCount(url: result.url)
         XCTAssertEqual(frames, 30)
         try await assertAudioTiming(url: result.url)
+    }
+
+    func test4KThenAdjustmentPreservesDimensionsCadenceAndAudibleAudio() async throws {
+        let source = try await makeFixture(rotated: true)
+        defer { remove(source) }
+        let input = try await VideoAnalyzer().analyze(url: source)
+        let settings = VideoProcessingSettings(resolution: .ultraHD, frameRate: .fps30, codec: .h264)
+        let resized = try await VideoExportService().export(info: input, settings: settings) { _ in }
+        defer { remove(resized.url) }
+        var adjustment = VideoEnhancementSettings.off
+        adjustment.mode = .custom
+        adjustment.exposure = 0.2
+        let result = try await VideoEnhancementService().enhance(sourceURL: resized.url, settings: adjustment, preferHEVC: false) { _ in }
+        defer { remove(result) }
+        let output = try await VideoAnalyzer().analyze(url: result)
+        XCTAssertNil(OutputVerification.mismatch(source: input, output: output, settings: settings))
+        try await assertAudioTiming(url: result)
     }
 
     func testVerifierRejectsUnprocessedFileFor4KAndHigherFPSRequests() async throws {
@@ -329,6 +347,27 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         let videoRange = try await video.load(.timeRange)
         XCTAssertEqual(audioRange.start.seconds, videoRange.start.seconds, accuracy: 0.05, file: file, line: line)
         XCTAssertEqual(audioRange.end.seconds, videoRange.end.seconds, accuracy: 0.08, file: file, line: line)
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: audio, outputSettings: [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ])
+        reader.add(output)
+        XCTAssertTrue(reader.startReading(), file: file, line: line)
+        var peak = 0
+        while let sample = output.copyNextSampleBuffer() {
+            guard let block = CMSampleBufferGetDataBuffer(sample) else { continue }
+            let length = CMBlockBufferGetDataLength(block)
+            var samples = [Int16](repeating: 0, count: (length + 1) / 2)
+            let status = samples.withUnsafeMutableBytes {
+                CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length, destination: $0.baseAddress!)
+            }
+            XCTAssertEqual(status, kCMBlockBufferNoErr, file: file, line: line)
+            peak = max(peak, samples.map { abs(Int($0)) }.max() ?? 0)
+        }
+        XCTAssertEqual(reader.status, .completed, file: file, line: line)
+        XCTAssertGreaterThan(peak, 100, "The saved test tone must decode into audible nonzero samples", file: file, line: line)
     }
 
     private func decodedFrameCount(url: URL) async throws -> Int {
@@ -365,4 +404,3 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         case failed(String)
     }
 }
-

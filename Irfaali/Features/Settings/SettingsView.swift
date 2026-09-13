@@ -27,7 +27,7 @@ struct SettingsView: View {
             }
 
             Section {
-                ForEach(AppPreferences.Appearance.allCases) { appearance in
+                ForEach([AppPreferences.Appearance.light, .dark]) { appearance in
                     Button {
                         withAnimation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil) {
                             preferences.appearance = appearance

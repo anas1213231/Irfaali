@@ -100,7 +100,7 @@ final class StudioViewModel: ObservableObject {
 
     var frameGenerationReadiness: FrameGenerationReadiness? {
         guard let info, let plan = frameGenerationPlan else { return nil }
-        let size = settings.targetSize(for: info)
+        let size = VideoProcessingSettings(resolution: .source).targetSize(for: info)
         return FrameGenerationReadiness.evaluate(
             plan: plan,
             width: Int(size.width.rounded()),
@@ -264,6 +264,7 @@ final class StudioViewModel: ObservableObject {
             var baseSettings = settings
             if wantsFrameGeneration {
                 baseSettings.frameRate = .source
+                baseSettings.resolution = .source
             }
 
             let exportEnd: Double
@@ -346,6 +347,19 @@ final class StudioViewModel: ObservableObject {
             }
 
             try Task.checkCancellation()
+
+            // Estimate motion at source resolution before enlarging the output.
+            if wantsFrameGeneration && settings.resolution != .source {
+                let generatedInfo = try await analyzer.analyze(url: finalResult.url)
+                let resized = try await exporter.export(info: generatedInfo, settings: .init(
+                    resolution: settings.resolution, frameRate: .source, codec: settings.codec
+                )) { _ in }
+                transientURLs.insert(resized.url)
+                try? FileManager.default.removeItem(at: finalResult.url)
+                transientURLs.remove(finalResult.url)
+                finalResult = ExportOutcome(url: resized.url, sourceFPS: info.sourceFPS,
+                    outputFPS: generatedInfo.sourceFPS, fpsMode: .interpolated, codecLabel: resized.codecLabel)
+            }
 
             if usesEnhancement {
                 processingStage = .enhancing

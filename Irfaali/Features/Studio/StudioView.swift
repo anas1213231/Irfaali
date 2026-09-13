@@ -541,8 +541,8 @@ struct StudioView: View {
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PremiumPrimaryButtonStyle())
-                    .disabled(!model.canProcess)
-                    .opacity(model.canProcess ? 1 : 0.48)
+                    .disabled(model.isAnalyzing || model.isProcessing)
+                    
                     .padding(.top, 16)
                 }
             }

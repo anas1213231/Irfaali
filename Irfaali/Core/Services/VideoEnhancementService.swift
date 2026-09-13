@@ -35,57 +35,17 @@ final class VideoEnhancementService {
         }
 
         let asset = AVURLAsset(url: sourceURL)
-        let videoComposition = VideoImageFilters.composition(asset: asset, settings: normalized)
+        let videoComposition = VideoImageFilters.composition(asset: asset, settings: normalized).mutableCopy() as! AVMutableVideoComposition
 
-        let preset = preferHEVC ? AVAssetExportPresetHEVCHighestQuality : AVAssetExportPresetHighestQuality
-        guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
-            throw EnhancementError.cannotCreateSession
-        }
-
+        let info = try await VideoAnalyzer().analyze(url: sourceURL)
+        videoComposition.frameDuration = CMTime(seconds: 1 / max(info.sourceFPS, 1), preferredTimescale: 60_000)
         let destination = try uniqueDestination()
-        guard session.supportedFileTypes.contains(.mp4) else {
-            throw EnhancementError.unsupportedOutputType
-        }
-
-        session.outputURL = destination
-        session.outputFileType = .mp4
-        session.shouldOptimizeForNetworkUse = true
-        session.videoComposition = videoComposition
-
-        let monitor = Task {
-            while !Task.isCancelled {
-                progress(Double(session.progress))
-                try? await Task.sleep(nanoseconds: 120_000_000)
-            }
-        }
-
-        defer { monitor.cancel() }
-
-        do {
-            try await withTaskCancellationHandler(operation: {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    session.exportAsynchronously {
-                        switch session.status {
-                        case .completed:
-                            progress(1)
-                            continuation.resume()
-                        case .failed:
-                            continuation.resume(throwing: EnhancementError.failed(session.error?.localizedDescription ?? "Unknown error"))
-                        case .cancelled:
-                            continuation.resume(throwing: CancellationError())
-                        default:
-                            continuation.resume(throwing: EnhancementError.failed("Unexpected export state: \(session.status.rawValue)"))
-                        }
-                    }
-                }
-            }, onCancel: {
-                session.cancelExport()
-            })
-            try Task.checkCancellation()
-        } catch {
-            try? FileManager.default.removeItem(at: destination)
-            throw error
-        }
+        try await VideoEncodingService.encode(
+            asset: asset, composition: videoComposition,
+            size: CGSize(width: info.width, height: info.height), fps: info.sourceFPS,
+            hevc: preferHEVC, bitrate: info.estimatedBitrate,
+            destination: destination, progress: progress
+        )
 
         return destination
     }
