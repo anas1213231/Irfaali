@@ -31,6 +31,36 @@ final class VideoProcessingSettingsTests: XCTestCase {
         XCTAssertEqual(settings.effectiveFPS(for: info), 30, accuracy: 0.001)
     }
 
+    func testRecommendedSettingsNeverUpscaleSmallSource() {
+        let info = fixture(width: 720, height: 1280, fps: 30)
+
+        let settings = VideoProcessingSettings.recommended(for: info)
+
+        XCTAssertEqual(settings.resolution, .source)
+        XCTAssertEqual(settings.targetSize(for: info), CGSize(width: 720, height: 1280))
+        XCTAssertEqual(
+            VideoProcessingSettings.supportedResolutions(for: info),
+            [.source]
+        )
+        XCTAssertEqual(
+            VideoProcessingSettings.supportedFrameRates(for: info),
+            [.source, .fps30]
+        )
+    }
+
+    func testReleaseOptionsHideUpscaleAndSyntheticFrameRates() {
+        let info = fixture(width: 1920, height: 1080, fps: 60)
+
+        XCTAssertEqual(
+            VideoProcessingSettings.supportedResolutions(for: info),
+            [.source, .fullHD]
+        )
+        XCTAssertEqual(
+            VideoProcessingSettings.supportedFrameRates(for: info),
+            [.source, .fps30, .fps60]
+        )
+    }
+
     func testPassThroughRequiresSourceResolutionFrameRateAndCodec() {
         let info = fixture(width: 1920, height: 1080, fps: 60)
 

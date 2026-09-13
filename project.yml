@@ -13,13 +13,9 @@ settings:
     MARKETING_VERSION: 1.1
     CURRENT_PROJECT_VERSION: 2
     SWIFT_STRICT_CONCURRENCY: targeted
-  configs:
-    DeviceQA:
-      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) IRFAALI_DEVICE_QA"
 configs:
   Debug: debug
   Release: release
-  DeviceQA: release
 targets:
   Irfaali:
     type: application
@@ -44,7 +40,9 @@ targets:
           - UIInterfaceOrientationPortrait
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: OfficialLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.anas1213231.irfaali

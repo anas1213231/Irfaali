@@ -13,7 +13,7 @@ struct VideoEnhancementSettings: Equatable, Sendable {
         func title(isArabic: Bool) -> String {
             switch self {
             case .off: return isArabic ? "بدون" : "Off"
-            case .smart: return isArabic ? "ذكي" : "Smart"
+            case .smart: return isArabic ? "موصى به" : "Recommended"
             case .clean: return isArabic ? "تنظيف" : "Clean"
             case .detail: return isArabic ? "تفاصيل" : "Detail"
             case .custom: return isArabic ? "يدوي" : "Custom"

@@ -8,6 +8,17 @@ enum IrfaaliTheme {
     static let secondaryInk = Color(red: 0.04, green: 0.085, blue: 0.073)
     static let warmWhite = Color(red: 0.985, green: 0.99, blue: 0.985)
 
+    /// The same quiet surface used by the native launch screen hand-off.
+    static let launchBackground = LinearGradient(
+        colors: [
+            Color(red: 0.008, green: 0.035, blue: 0.030),
+            Color(red: 0.018, green: 0.105, blue: 0.082),
+            Color(red: 0.004, green: 0.022, blue: 0.019)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
     // Kept for older views while the design system migrates to ThemeBackground.
     static let background = LinearGradient(
         colors: [ink, secondaryInk, Color.black],
@@ -36,7 +47,7 @@ struct ThemeBackground: View {
                 Color.clear
             } else if isDark {
                 RadialGradient(
-                    colors: [IrfaaliTheme.emerald.opacity(0.18), .clear],
+                    colors: [IrfaaliTheme.emerald.opacity(0.11), .clear],
                     center: .topTrailing,
                     startRadius: 8,
                     endRadius: 360
@@ -44,21 +55,21 @@ struct ThemeBackground: View {
                 .blendMode(.screen)
 
                 RadialGradient(
-                    colors: [IrfaaliTheme.accentDeep.opacity(0.18), .clear],
+                    colors: [IrfaaliTheme.accentDeep.opacity(0.10), .clear],
                     center: .bottomLeading,
                     startRadius: 10,
                     endRadius: 300
                 )
             } else {
                 RadialGradient(
-                    colors: [IrfaaliTheme.accent.opacity(0.16), .clear],
+                    colors: [IrfaaliTheme.accent.opacity(0.10), .clear],
                     center: .topTrailing,
                     startRadius: 12,
                     endRadius: 420
                 )
 
                 RadialGradient(
-                    colors: [Color.white.opacity(0.9), .clear],
+                    colors: [Color.white.opacity(0.55), .clear],
                     center: .bottomLeading,
                     startRadius: 20,
                     endRadius: 340

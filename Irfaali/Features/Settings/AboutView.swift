@@ -35,7 +35,7 @@ struct AboutView: View {
                 VStack(spacing: 6) {
                     Text(AppBranding.appName)
                         .font(IrfaaliTheme.titleFont(32))
-                    Text(preferences.text(ar: "محرك فيديو احترافي", en: "Premium Video Engine"))
+                    Text(preferences.text(ar: "معالجة فيديو موثوقة", en: "Verified video processing"))
                         .font(.subheadline.weight(.semibold))
                         .tracking(0.3)
                         .foregroundStyle(.secondary)
@@ -114,8 +114,8 @@ struct AboutView: View {
                         .font(.headline.weight(.bold))
                     Text(
                         preferences.text(
-                            ar: "حقوق ارفعلي تظهر داخل التطبيق بس. ما نحط Watermark ولا اسم مطور ولا Intro/Outro على فيديوك.",
-                            en: "Ownership appears inside the app only. Irfaali does not add a watermark, developer name, intro or outro to your video."
+                            ar: "تظهر هوية ارفعلي داخل التطبيق فقط. لا نضيف علامة مائية أو مقدمة أو خاتمة على فيديوك.",
+                            en: "Irfaali keeps its identity inside the app and does not add a watermark, intro or outro to your video."
                         )
                     )
                     .font(.caption)

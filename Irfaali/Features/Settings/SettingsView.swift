@@ -8,34 +8,30 @@ struct SettingsView: View {
             ThemeBackground()
 
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 14) {
                     languageCard
                     appearanceCard
                     experienceCard
-                    developerCard
+                    ownerCard
                     aboutCard
                     versionFooter
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 36)
+                .padding(.bottom, 34)
             }
+            .scrollIndicators(.hidden)
         }
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
         .navigationBarTitleDisplayMode(.inline)
-        .scrollIndicators(.hidden)
-        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.language)
-        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.appearance)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil, value: preferences.language)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil, value: preferences.appearance)
     }
 
     private var languageCard: some View {
         PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                Label(
-                    preferences.text(ar: "لغة التطبيق", en: "App Language"),
-                    systemImage: "character.bubble.fill"
-                )
-                .font(.headline.weight(.bold))
+            VStack(alignment: .leading, spacing: 12) {
+                sectionTitle(icon: "character.bubble.fill", ar: "لغة التطبيق", en: "App Language")
 
                 Picker("Language", selection: $preferences.language) {
                     Text("العربية").tag(AppPreferences.Language.arabic)
@@ -45,8 +41,8 @@ struct SettingsView: View {
 
                 Text(
                     preferences.text(
-                        ar: "اختار اللغة اللي تناسبك.",
-                        en: "Choose your language and the interface direction updates automatically."
+                        ar: "يتغير اتجاه الواجهة تلقائيًا مع اختيار اللغة.",
+                        en: "The interface direction updates with your language."
                     )
                 )
                 .font(.caption)
@@ -57,42 +53,34 @@ struct SettingsView: View {
 
     private var appearanceCard: some View {
         PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Label(
-                        preferences.text(ar: "ثيم التطبيق", en: "Appearance"),
-                        systemImage: "circle.lefthalf.filled"
-                    )
-                    .font(.headline.weight(.bold))
+            VStack(alignment: .leading, spacing: 11) {
+                sectionTitle(icon: "circle.lefthalf.filled", ar: "مظهر التطبيق", en: "Appearance")
 
-                    Spacer()
+                ForEach(AppPreferences.Appearance.allCases) { appearance in
+                    Button {
+                        preferences.appearance = appearance
+                    } label: {
+                        HStack(spacing: 11) {
+                            appearanceSwatch(for: appearance)
 
-                    Text(preferences.appearanceName(preferences.appearance))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(IrfaaliTheme.accent)
-                }
+                            Text(preferences.appearanceName(appearance))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
 
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 10)], spacing: 10) {
-                    ForEach(AppPreferences.Appearance.allCases) { appearance in
-                        Button { preferences.appearance = appearance } label: {
-                            VStack(spacing: 10) {
-                                themePreview(for: appearance)
-                                Text(preferences.appearanceName(appearance))
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(preferences.appearance == appearance ? IrfaaliTheme.accent : .secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(preferences.appearance == appearance ? IrfaaliTheme.accent : .clear, lineWidth: 1.5)
+                            Spacer(minLength: 0)
+
+                            if preferences.appearance == appearance {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(IrfaaliTheme.accent)
                             }
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(preferences.appearance == appearance ? .isSelected : [])
+                        .contentShape(Rectangle())
+                        .frame(minHeight: 38)
+                    }
+                    .buttonStyle(.plain)
+
+                    if appearance != .pureWhite {
+                        Divider().opacity(0.22)
                     }
                 }
             }
@@ -101,17 +89,18 @@ struct SettingsView: View {
 
     private var experienceCard: some View {
         PremiumSurface {
-            VStack(spacing: 14) {
+            VStack(spacing: 0) {
                 Toggle(isOn: $preferences.animationsEnabled) {
                     Label(
-                        preferences.text(ar: "الحركة والتأثيرات", en: "Animations & Motion"),
+                        preferences.text(ar: "الحركة", en: "Motion"),
                         systemImage: "sparkles"
                     )
                     .font(.subheadline.weight(.semibold))
                 }
                 .tint(IrfaaliTheme.accent)
+                .padding(.vertical, 4)
 
-                Divider().opacity(0.3)
+                Divider().opacity(0.25)
 
                 Toggle(isOn: $preferences.hapticsEnabled) {
                     Label(
@@ -121,46 +110,42 @@ struct SettingsView: View {
                     .font(.subheadline.weight(.semibold))
                 }
                 .tint(IrfaaliTheme.accent)
+                .padding(.vertical, 4)
             }
         }
     }
 
-    private var developerCard: some View {
+    private var ownerCard: some View {
         PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(preferences.text(ar: "المالك", en: "OWNER"))
-                    .font(.caption2.bold())
-                    .tracking(preferences.isArabic ? 0.2 : 1.5)
-                    .foregroundStyle(.secondary)
+            Link(destination: AppBranding.telegramURL) {
+                HStack(spacing: 12) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.title3)
+                        .foregroundStyle(IrfaaliTheme.accent)
+                        .frame(width: 42, height: 42)
+                        .background(IrfaaliTheme.accent.opacity(0.11), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
-                Link(destination: AppBranding.telegramURL) {
-                    HStack(spacing: 13) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(IrfaaliTheme.accent.opacity(0.13))
-                            Image(systemName: "paperplane.fill")
-                                .foregroundStyle(IrfaaliTheme.accent)
-                        }
-                        .frame(width: 48, height: 48)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(AppBranding.ownerHandle)
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.primary)
-                            Text(preferences.text(ar: "تلجرام · حقوق ارفعلي", en: "Telegram · Irfaali owner"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption.bold())
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(preferences.text(ar: "المطور والمالك", en: "Developer and owner"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(AppBranding.ownerHandle)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(.primary)
+                        Text(preferences.text(ar: "تواصل عبر تيليجرام", en: "Contact on Telegram"))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .contentShape(Rectangle())
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -169,25 +154,28 @@ struct SettingsView: View {
             AboutView()
         } label: {
             PremiumSurface {
-                HStack(spacing: 13) {
+                HStack(spacing: 12) {
                     Image(systemName: "info.circle.fill")
-                        .font(.title2)
+                        .font(.title3)
                         .foregroundStyle(IrfaaliTheme.accent)
+
                     VStack(alignment: .leading, spacing: 3) {
                         Text(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.primary)
                         Text(
                             preferences.text(
-                                ar: "الحقوق، الإصدار وهوية التطبيق",
+                                ar: "الحقوق، الإصدار، وهوية التطبيق",
                                 en: "Ownership, version and app identity"
                             )
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    Image(systemName: "chevron.forward")
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                 }
@@ -197,43 +185,44 @@ struct SettingsView: View {
     }
 
     private var versionFooter: some View {
-        Text(preferences.text(ar: "ارفعلي · الإصدار \(versionText)", en: "Irfaali · Version \(versionText)"))
-            .font(.footnote.weight(.medium))
-            .foregroundStyle(.secondary)
-            .padding(.vertical, 12)
+        Text(
+            preferences.text(
+                ar: "ارفعلي · الإصدار (versionText)",
+                en: "Irfaali · Version (versionText)"
+            )
+        )
+        .font(.footnote.weight(.medium))
+        .foregroundStyle(.secondary)
+        .padding(.vertical, 10)
     }
 
-    @ViewBuilder
-    private func themePreview(for appearance: AppPreferences.Appearance) -> some View {
-        let colors: [Color] = {
-            switch appearance {
-            case .system:
-                [.white, .black]
-            case .pureBlack:
-                [.black, .black]
-            case .dark:
-                [Color(white: 0.10), Color(white: 0.18)]
-            case .light:
-                [Color(white: 0.82), .white]
-            case .pureWhite:
-                [.white, .white]
-            }
-        }()
+    private func sectionTitle(icon: String, ar: String, en: String) -> some View {
+        Label(preferences.text(ar: ar, en: en), systemImage: icon)
+            .font(.headline.weight(.bold))
+    }
 
-        Circle()
-            .fill(
-                LinearGradient(
-                    colors: colors,
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(Circle().stroke(.secondary.opacity(0.25), lineWidth: 1))
-            .frame(width: 30, height: 30)
+    private func appearanceSwatch(for appearance: AppPreferences.Appearance) -> some View {
+        let colors: [Color]
+        switch appearance {
+        case .system:
+            colors = [.white, .black]
+        case .pureBlack:
+            colors = [.black, .black]
+        case .dark:
+            colors = [Color(white: 0.12), Color(white: 0.23)]
+        case .light:
+            colors = [Color(white: 0.82), .white]
+        case .pureWhite:
+            colors = [.white, .white]
+        }
+
+        return Circle()
+            .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(Circle().stroke(.secondary.opacity(0.28), lineWidth: 1))
+            .frame(width: 28, height: 28)
     }
 
     private var versionText: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        return version
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"
     }
 }

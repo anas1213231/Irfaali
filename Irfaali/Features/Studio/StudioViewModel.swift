@@ -56,7 +56,6 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var validationMessage: String?
     @Published private(set) var saveState: SaveState = .idle
     @Published var errorMessage: String?
-    @Published var frameGenerationTrialEnabled = false
 
     private let analyzer = VideoAnalyzer()
     private let exporter = VideoExportService()
@@ -65,15 +64,16 @@ final class StudioViewModel: ObservableObject {
     private let photoSaver = PhotoLibrarySaver()
     private var activeProcessingTask: Task<ExportOutcome?, Never>?
 
-    /// Explicit opt-in is only compiled into the physical-device QA candidate.
+    /// The public build only exposes operations that are verified by the
+    /// exporter and the final output audit. Higher-FPS frame synthesis remains
+    /// internal until it has completed physical-device acceptance.
     var canProcess: Bool {
         guard let info, !isAnalyzing, !isProcessing else { return false }
-        if !settings.needsFrameGeneration(for: info) { return true }
-        #if IRFAALI_DEVICE_QA
-        return frameGenerationTrialEnabled && frameGenerationPlan != nil && frameGenerationReadiness?.canStart == true
-        #else
-        return false
-        #endif
+        guard VideoProcessingSettings.supportedResolutions(for: info).contains(settings.resolution),
+              VideoProcessingSettings.supportedFrameRates(for: info).contains(settings.frameRate) else {
+            return false
+        }
+        return !settings.needsFrameGeneration(for: info)
     }
 
     var canCancelProcessing: Bool {
@@ -108,45 +108,44 @@ final class StudioViewModel: ObservableObject {
     var processingStageTextArabic: String {
         switch processingStage {
         case .idle:
-            return "جاهزين متى ما أنت جاهز 😎"
+            return "جاهز للمعالجة"
         case .preparing:
             return "نجهّز المحرك…"
         case .exporting:
-            return "قاعدين نبني الملف مضبوط 🔥"
+            return "جاري إنشاء الملف"
         case .generatingFrames:
-            return "نولد فريمات جديدة بالحركة 🧠⚡️"
+            return "جاري تجهيز الفريمات"
         case .enhancing:
-            return "نلمّع التفاصيل الحين ✨"
+            return "جاري تحسين الصورة"
         case .verifying:
-            return "آخر فحص يا وحش 👀"
+            return "جاري التحقق من النتيجة"
         case .complete:
-            return "خلصناها صح ✅"
+            return "اكتملت المعالجة"
         }
     }
 
     var processingStageTextEnglish: String {
         switch processingStage {
         case .idle:
-            return "Ready when you are."
+            return "Ready to process"
         case .preparing:
-            return "Preparing the engine…"
+            return "Preparing the video…"
         case .exporting:
-            return "Building the output…"
+            return "Creating the output…"
         case .generatingFrames:
-            return "Generating motion-aware frames…"
+            return "Preparing frames…"
         case .enhancing:
-            return "Enhancing image details…"
+            return "Enhancing the image…"
         case .verifying:
-            return "Running final verification…"
+            return "Verifying the result…"
         case .complete:
-            return "Processing complete."
+            return "Processing complete"
         }
     }
 
     func importVideo(url: URL) async {
         cancelProcessing()
         if let activeProcessingTask { _ = await activeProcessingTask.value }
-        frameGenerationTrialEnabled = false
         isAnalyzing = true
         processingStage = .idle
         generatedFrameCount = 0
@@ -228,6 +227,11 @@ final class StudioViewModel: ObservableObject {
 
         do {
             try Task.checkCancellation()
+
+            guard VideoProcessingSettings.supportedResolutions(for: info).contains(settings.resolution),
+                  VideoProcessingSettings.supportedFrameRates(for: info).contains(settings.frameRate) else {
+                throw ProcessingError.outputMismatch("اختر إعدادًا مناسبًا لخصائص الفيديو.")
+            }
 
             let usesEnhancement = enhancement.isEnabled
             let wantsFrameGeneration = settings.needsFrameGeneration(for: info)

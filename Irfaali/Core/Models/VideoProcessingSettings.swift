@@ -80,12 +80,17 @@ struct VideoProcessingSettings: Equatable, Sendable {
 
     static func recommended(for info: VideoAssetInfo) -> VideoProcessingSettings {
         let resolution: Resolution
-        if max(info.width, info.height) >= 2160 {
+        let sourceLongEdge = max(info.width, info.height)
+        if sourceLongEdge >= 3840 {
             resolution = .source
-        } else if max(info.width, info.height) >= 1440 {
+        } else if sourceLongEdge >= 2560 {
             resolution = .qhd
-        } else {
+        } else if sourceLongEdge >= 1920 {
             resolution = .fullHD
+        } else {
+            // Never upscale by default. A smaller source should stay at its
+            // native dimensions until the user explicitly chooses otherwise.
+            resolution = .source
         }
 
         let frameRate: FrameRate = info.sourceFPS >= 59.5 ? .fps60 : .source
@@ -126,6 +131,28 @@ struct VideoProcessingSettings: Equatable, Sendable {
 
     func canRunFrameRate(for info: VideoAssetInfo) -> Bool {
         !needsFrameGeneration(for: info)
+    }
+
+    /// Output sizes that do not invent pixels for this source. The source
+    /// option is always present; larger targets are offered only when the
+    /// source already contains that many pixels on its long edge.
+    static func supportedResolutions(for info: VideoAssetInfo) -> [Resolution] {
+        let sourceLongEdge = max(info.width, info.height)
+        return Resolution.allCases.filter { resolution in
+            guard let maximumLongEdge = resolution.maximumLongEdge else { return true }
+            return sourceLongEdge >= Int(maximumLongEdge)
+        }
+    }
+
+    /// Frame rates that can be encoded from the source cadence without
+    /// synthesising frames. Higher frame-rate generation is intentionally not
+    /// part of the public release surface until it has passed device-quality
+    /// acceptance.
+    static func supportedFrameRates(for info: VideoAssetInfo) -> [FrameRate] {
+        FrameRate.allCases.filter { frameRate in
+            guard let requested = frameRate.requestedFPS else { return true }
+            return requested <= info.sourceFPS + 0.5
+        }
     }
 
     func isPassThrough(for info: VideoAssetInfo) -> Bool {

@@ -10,21 +10,21 @@ struct PremiumSurface<Content: View>: View {
 
     var body: some View {
         content
-            .padding(20)
-            .background(colorScheme == .dark ? Color(white: 0.085) : .white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(18)
+            .background(colorScheme == .dark ? Color(white: 0.075) : .white.opacity(0.92), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(borderColor, lineWidth: 0.8)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(borderColor, lineWidth: 0.7)
             }
-            .shadow(color: shadowColor, radius: 12, y: 5)
+            .shadow(color: shadowColor, radius: 8, y: 3)
     }
 
     private var borderColor: Color {
-        colorScheme == .dark ? .white.opacity(0.11) : .black.opacity(0.075)
+        colorScheme == .dark ? .white.opacity(0.095) : .black.opacity(0.065)
     }
 
     private var shadowColor: Color {
-        colorScheme == .dark ? .black.opacity(0.28) : .black.opacity(0.09)
+        colorScheme == .dark ? .black.opacity(0.22) : .black.opacity(0.07)
     }
 }
 
@@ -49,10 +49,10 @@ struct MetricTile: View {
                 .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(tileFill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(12)
+        .background(tileFill, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .stroke(colorScheme == .dark ? .white.opacity(0.055) : .black.opacity(0.05), lineWidth: 0.7)
         }
     }

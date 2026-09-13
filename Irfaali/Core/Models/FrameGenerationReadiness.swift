@@ -104,9 +104,9 @@ struct FrameGenerationReadiness: Equatable, Sendable {
             break
         }
 
-        // v1 keeps the on-device optical-flow path inside a 4K-class working set.
-        // Users can still pick a 4K target before generation; larger source frames
-        // must be downscaled first so Vision + Metal do not create unsafe memory pressure.
+        // The internal optical-flow path stays inside a 4K-class working set.
+        // The public release does not expose this path until physical-device
+        // quality acceptance is complete.
         let safeWidth = max(width, 0)
         let safeHeight = max(height, 0)
         let longEdge = max(safeWidth, safeHeight)
