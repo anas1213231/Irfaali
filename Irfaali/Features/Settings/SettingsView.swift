@@ -52,7 +52,7 @@ struct SettingsView: View {
                         }
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
                 }
             } header: {
                 sectionHeader(ar: "المظهر", en: "Appearance")
@@ -107,9 +107,11 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+        .sensoryFeedback(.selection, trigger: preferences.language) { _, _ in preferences.hapticsEnabled } // UI-UPGRADE
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(ThemeBackground())
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: existing links, menus and buttons
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
         .navigationBarTitleDisplayMode(.large)
         .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil, value: preferences.language)

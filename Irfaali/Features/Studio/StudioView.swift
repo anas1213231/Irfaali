@@ -70,6 +70,8 @@ struct StudioView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: toolbar and unstyled buttons
+        .sensoryFeedback(.selection, trigger: showOriginal) { _, _ in preferences.hapticsEnabled }
         .navigationTitle(preferences.text(ar: "ارفعلي", en: "Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -186,7 +188,7 @@ struct StudioView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: 40)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
             .foregroundStyle(.secondary)
         }
         .disabled(model.isAnalyzing || model.isProcessing)
@@ -212,8 +214,10 @@ struct StudioView: View {
                     ZStack {
                         VideoThumbnailView(url: info.url, isAvailable: true)
                         Color.black.opacity(0.45)
+                        PremiumProcessingScanner() // UI-UPGRADE: frosted laser overlay
                         VStack(spacing: 12) {
                             ProgressView().tint(.white)
+                                .opacity(0).accessibilityHidden(true) // UI-UPGRADE: scanner replaces the spinner visually, retaining its spacing
                             Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
                                 .font(.headline).foregroundStyle(.white)
                             Text("\(Int(model.progress * 100))%")
@@ -272,7 +276,7 @@ struct StudioView: View {
                                     }
                                 }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
                     }
                 }
             }
@@ -603,7 +607,7 @@ struct StudioView: View {
             .padding(.vertical, 13)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
         .disabled(model.isProcessing)
     }
 
@@ -655,6 +659,7 @@ struct StudioView: View {
                 in: range
             )
             .tint(IrfaaliTheme.accent)
+            .modifier(PremiumSliderFeedback(value: value, range: range)) // UI-UPGRADE: native slider decoration
             .disabled(model.isProcessing)
         }
     }
@@ -986,8 +991,7 @@ private struct PremiumPrimaryButtonStyle: ButtonStyle {
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
             .foregroundStyle(Color.black)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
-            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+            .modifier(PremiumPressFeedback(isPressed: configuration.isPressed)) // UI-UPGRADE
     }
 }
 
@@ -1011,7 +1015,7 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
                     .stroke(colorScheme == .dark ? .white.opacity(0.11) : .black.opacity(0.08), lineWidth: 1)
             }
             .foregroundStyle(.primary)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
+            .modifier(PremiumPressFeedback(isPressed: configuration.isPressed)) // UI-UPGRADE
     }
 }
 
@@ -1032,7 +1036,6 @@ private struct PremiumDestructiveButtonStyle: ButtonStyle {
                     .stroke(Color.red.opacity(configuration.isPressed ? 0.42 : 0.22), lineWidth: 1)
             }
             .foregroundStyle(.red)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
-            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+            .modifier(PremiumPressFeedback(isPressed: configuration.isPressed)) // UI-UPGRADE
     }
 }

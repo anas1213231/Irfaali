@@ -29,6 +29,7 @@ struct HistoryView: View {
                 }
             }
         }
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: existing links, menus and buttons
         .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "Videos"))
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
@@ -106,7 +107,7 @@ struct HistoryView: View {
                                 .stroke(.white.opacity(0.10), lineWidth: 1)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
                     .disabled(!record.outputExists)
 
                     VStack(alignment: .leading, spacing: 5) {

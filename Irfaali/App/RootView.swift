@@ -14,6 +14,7 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 StudioView()
+                    .modifier(PremiumTabEntrance(isSelected: selectedTab == .studio)) // UI-UPGRADE
             }
             .tabItem {
                 Label(
@@ -25,6 +26,7 @@ struct RootView: View {
 
             NavigationStack {
                 HistoryView()
+                    .modifier(PremiumTabEntrance(isSelected: selectedTab == .videos)) // UI-UPGRADE
             }
             .tabItem {
                 Label(
@@ -36,6 +38,7 @@ struct RootView: View {
 
             NavigationStack {
                 SettingsView()
+                    .modifier(PremiumTabEntrance(isSelected: selectedTab == .settings)) // UI-UPGRADE
             }
             .tabItem {
                 Label(
