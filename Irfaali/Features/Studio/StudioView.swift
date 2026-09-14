@@ -10,8 +10,8 @@ struct StudioView: View {
     @State private var showSourceDetails = false
     @State private var hasAppeared = false
     @State private var showOriginal = false
-    @State private var editorTab = 0
     @State private var previewExport = false
+    @Namespace private var presetSelection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var preferences: AppPreferences
@@ -38,22 +38,7 @@ struct StudioView: View {
 
                     if let info = model.info {
                         previewCard(info)
-                        Picker(preferences.text(ar: "الأدوات", en: "Tools"), selection: $editorTab) {
-                            Text(preferences.text(ar: "تعديل الصورة", en: "Adjust")).tag(0)
-                            Text(preferences.text(ar: "التصدير", en: "Export")).tag(1)
-                        }
-                        .pickerStyle(.segmented)
-                        .disabled(model.isProcessing)
-                        if editorTab == 0 {
-                            adjustmentPanel
-                            Button { editorTab = 1 } label: {
-                                Label(preferences.text(ar: "إعدادات التصدير", en: "Export settings"), systemImage: "arrow.up.right")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(PremiumPrimaryButtonStyle())
-                        } else {
-                            processingCard(info)
-                        }
+                        processingCard(info)
                         DisclosureGroup(preferences.text(ar: "معلومات المصدر", en: "Source information")) {
                             sourceCard(info)
                             importCard
@@ -114,7 +99,6 @@ struct StudioView: View {
         .onChange(of: model.info?.url) { _, _ in
             showOriginal = false
             previewExport = false
-            editorTab = 0
         }
         .onChange(of: model.lastOutcome?.url) { _, value in
             if value != nil { previewExport = true }
@@ -223,10 +207,27 @@ struct StudioView: View {
                     }
                 }
             }
-            VideoCanvas(
-                url: previewExport ? (model.lastOutcome?.url ?? info.url) : info.url,
-                enhancement: previewExport || showOriginal ? .off : model.enhancement
-            )
+            Group {
+                if model.isProcessing {
+                    ZStack {
+                        VideoThumbnailView(url: info.url, isAvailable: true)
+                        Color.black.opacity(0.45)
+                        VStack(spacing: 12) {
+                            ProgressView().tint(.white)
+                            Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
+                                .font(.headline).foregroundStyle(.white)
+                            Text("\(Int(model.progress * 100))%")
+                                .monospacedDigit().foregroundStyle(.white)
+                                .contentTransition(.numericText())
+                        }
+                    }
+                } else {
+                    VideoCanvas(
+                        url: previewExport ? (model.lastOutcome?.url ?? info.url) : info.url,
+                        enhancement: previewExport || showOriginal ? .off : model.enhancement
+                    )
+                }
+            }
             .frame(height: info.height > info.width ? 330 : 230)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(alignment: .topLeading) {
@@ -236,7 +237,7 @@ struct StudioView: View {
                     .background(.regularMaterial, in: Capsule())
                     .padding(12)
             }
-            if !previewExport {
+            if !previewExport && !model.isProcessing {
                 Picker(preferences.text(ar: "المقارنة", en: "Compare"), selection: $showOriginal) {
                     Text(preferences.text(ar: "الأصل", en: "Original")).tag(true)
                     Text(preferences.text(ar: "التعديل", en: "Adjusted")).tag(false)
@@ -262,7 +263,14 @@ struct StudioView: View {
                             Text(mode.title(isArabic: preferences.isArabic))
                                 .font(.subheadline.weight(.semibold))
                                 .padding(.horizontal, 16).padding(.vertical, 12)
-                                .background(model.enhancement.mode == mode ? IrfaaliTheme.accent.opacity(0.2) : Color.secondary.opacity(0.08), in: Capsule())
+                                .background {
+                                    if model.enhancement.mode == mode {
+                                        Capsule().fill(IrfaaliTheme.accent.opacity(0.2))
+                                            .matchedGeometryEffect(id: "selectedPreset", in: presetSelection)
+                                    } else {
+                                        Capsule().fill(Color.secondary.opacity(0.08))
+                                    }
+                                }
                         }
                         .buttonStyle(.plain)
                     }
@@ -273,6 +281,8 @@ struct StudioView: View {
             enhancementControls
         }
         .disabled(model.isProcessing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .snappy(duration: 0.25) : nil, value: model.enhancement.mode)
+        .sensoryFeedback(.selection, trigger: model.enhancement.mode) { _, _ in preferences.hapticsEnabled }
     }
 
     private var analyzingCard: some View {
@@ -409,7 +419,7 @@ struct StudioView: View {
                         .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(preferences.text(ar: "إعدادات الإخراج", en: "Output settings"))
+                        Text(preferences.text(ar: "تعديل", en: "Edit"))
                             .font(.headline.weight(.bold))
                         Text(
                             preferences.text(
@@ -496,6 +506,13 @@ struct StudioView: View {
 
                 settingsDivider
 
+                VStack(alignment: .leading, spacing: 16) {
+                    Label(preferences.text(ar: "تعديل الصورة", en: "Image adjustments"), systemImage: "slider.horizontal.3")
+                        .font(.headline)
+                    adjustmentPanel
+                }
+                .padding(.vertical, 20)
+
                 Text(outputExplanation(info))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -530,7 +547,7 @@ struct StudioView: View {
                         }
                     } label: {
                         HStack(spacing: 9) {
-                            Text(preferences.text(ar: "ابدأ المعالجة", en: "Start processing"))
+                            Text(preferences.text(ar: "معالجة الفيديو", en: "Process video"))
                             Spacer()
                             Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
                         }

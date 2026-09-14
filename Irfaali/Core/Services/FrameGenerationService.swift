@@ -231,6 +231,7 @@ final class FrameGenerationService {
                 }
 
                 if let previousBuffer, let previousPTS, let originPTS {
+                    try autoreleasepool {
                     let start = CMTimeSubtract(previousPTS, originPTS).seconds
                     let end = CMTimeSubtract(currentPTS, originPTS).seconds
                     let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
@@ -258,6 +259,7 @@ final class FrameGenerationService {
                         }
                     }
 
+                    }
                     let adjustedCurrent = CMTimeSubtract(currentPTS, originPTS)
                     let seconds = max(0, CMTimeGetSeconds(adjustedCurrent))
                     progress(min(max((seconds / durationSeconds) * 0.88, 0), 0.88))
@@ -328,7 +330,11 @@ final class FrameGenerationService {
     ) throws {
         try Task.checkCancellation()
 
+        let deadline = Date().addingTimeInterval(30)
         while !writerInput.isReadyForMoreMediaData {
+            guard Date() < deadline else {
+                throw GenerationError.writerFailed("The encoder stopped accepting frames for 30 seconds.")
+            }
             try Task.checkCancellation()
             if writer.status == .failed {
                 throw GenerationError.writerFailed(writer.error?.localizedDescription ?? "Writer became unavailable")

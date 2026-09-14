@@ -54,8 +54,8 @@ final class AppPreferences: ObservableObject {
             appearance = .dark
         }
 
-        animationsEnabled = defaults.object(forKey: Keys.animationsEnabled) as? Bool ?? true
-        hapticsEnabled = defaults.object(forKey: Keys.hapticsEnabled) as? Bool ?? true
+        animationsEnabled = true
+        hapticsEnabled = true
     }
 
     var isArabic: Bool { language == .arabic }

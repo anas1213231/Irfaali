@@ -87,6 +87,7 @@ enum VideoEncodingService {
             var done = Array(repeating: false, count: pairs.count)
             var counts = Array(repeating: 0, count: pairs.count)
             var lastActivity = Date()
+            var lastProgress = Date.distantPast
             while done.contains(false) {
                 try Task.checkCancellation()
                 if writer.status == .failed { throw writer.error ?? EncodingError.failed("Writer failed") }
@@ -98,7 +99,8 @@ enum VideoEncodingService {
                     if let sample = output.copyNextSampleBuffer() {
                         guard input.append(sample) else { throw writer.error ?? EncodingError.failed("Cannot append sample") }
                         counts[i] += 1
-                        if i == 0 {
+                        if i == 0 && Date().timeIntervalSince(lastProgress) >= 0.1 {
+                            lastProgress = Date()
                             let time = CMSampleBufferGetPresentationTimeStamp(sample).seconds
                             progress(min(0.99, max(0, time / max(duration.seconds, 0.001))))
                         }

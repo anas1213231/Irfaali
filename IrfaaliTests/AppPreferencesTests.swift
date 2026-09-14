@@ -50,13 +50,13 @@ final class AppPreferencesTests: XCTestCase {
         XCTAssertEqual(reloaded.preferredColorScheme, .dark)
     }
 
-    func testMotionAndHapticsPersist() {
+    func testMotionAndHapticsStayEnabledWithoutUserSettings() {
         let preferences = AppPreferences(defaults: defaults)
         preferences.animationsEnabled = false
         preferences.hapticsEnabled = false
 
         let reloaded = AppPreferences(defaults: defaults)
-        XCTAssertFalse(reloaded.animationsEnabled)
-        XCTAssertFalse(reloaded.hapticsEnabled)
+        XCTAssertTrue(reloaded.animationsEnabled)
+        XCTAssertTrue(reloaded.hapticsEnabled)
     }
 }

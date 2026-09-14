@@ -259,140 +259,67 @@ final class StudioViewModel: ObservableObject {
                 (info.videoCodec.localizedCaseInsensitiveContains("HEVC") || info.videoCodec.localizedCaseInsensitiveContains("H.265"))
             )
 
-            // Geometry / codec preparation must happen at the source cadence. The
-            // frame generator then creates genuinely new temporal samples.
-            var baseSettings = settings
-            if wantsFrameGeneration {
-                baseSettings.frameRate = .source
-                baseSettings.resolution = .source
-            }
+            var workingURL = info.url
+            var generationResult: FrameGenerationService.Result?
+            let generationStart = usesEnhancement ? 0.25 : 0.02
+            let generationEnd = 0.75
+            let finalStart = wantsFrameGeneration ? generationEnd : (usesEnhancement ? 0.25 : 0.02)
 
-            let exportEnd: Double
-            let generationStart: Double
-            let generationEnd: Double
-            let enhancementStart: Double
-
-            if wantsFrameGeneration && usesEnhancement {
-                exportEnd = 0.16
-                generationStart = 0.16
-                generationEnd = 0.78
-                enhancementStart = 0.78
-            } else if wantsFrameGeneration {
-                exportEnd = 0.20
-                generationStart = 0.20
-                generationEnd = 0.96
-                enhancementStart = 0.96
-            } else if usesEnhancement {
-                exportEnd = 0.70
-                generationStart = 0.70
-                generationEnd = 0.70
-                enhancementStart = 0.70
-            } else {
-                exportEnd = 0.96
-                generationStart = 0.96
-                generationEnd = 0.96
-                enhancementStart = 0.96
-            }
-
-            processingStage = .exporting
-            let baseResult = try await exporter.export(info: info, settings: baseSettings) { [weak self] value in
-                Task { @MainActor in
-                    self?.progress = min(max(value * exportEnd, 0), exportEnd)
+            // Image adjustments run at source cadence and resolution. This avoids
+            // filtering 120 full-size 4K frames for each second of a 30 FPS source.
+            if usesEnhancement {
+                processingStage = .enhancing
+                workingURL = try await enhancer.enhance(sourceURL: workingURL,
+                    settings: enhancement, preferHEVC: resolvedPreferHEVC) { [weak self] value in
+                    Task { @MainActor in self?.progress = min(0.25, max(0.02, value * 0.25)) }
                 }
+                transientURLs.insert(workingURL)
             }
-            transientURLs.insert(baseResult.url)
             try Task.checkCancellation()
 
-            var finalResult = baseResult
-            var generationResult: FrameGenerationService.Result?
-
-            if wantsFrameGeneration,
-               let generationPlan,
-               generationPlan.strategy == .opticalFlow2x {
+            if wantsFrameGeneration, let generationPlan {
                 processingStage = .generatingFrames
-
                 let generated = try await frameGenerator.generate2x(
-                    sourceURL: baseResult.url,
-                    sourceFPS: info.sourceFPS,
-                    targetFPS: generationPlan.targetFPS,
-                    estimatedBitrate: info.estimatedBitrate,
+                    sourceURL: workingURL, sourceFPS: info.sourceFPS,
+                    targetFPS: generationPlan.targetFPS, estimatedBitrate: info.estimatedBitrate,
                     preferHEVC: resolvedPreferHEVC
                 ) { [weak self] value in
                     Task { @MainActor in
-                        let span = generationEnd - generationStart
-                        self?.progress = min(
-                            max(generationStart + value * span, generationStart),
-                            generationEnd
-                        )
+                        self?.progress = generationStart + min(1, max(0, value)) * (generationEnd - generationStart)
                     }
                 }
-
                 generationResult = generated
                 generatedFrameCount = generated.generatedFrameCount
                 sceneCutFallbackFrameCount = generated.sceneCutFallbackFrameCount
-                transientURLs.insert(generated.url)
-
-                if generated.url != baseResult.url {
-                    try? FileManager.default.removeItem(at: baseResult.url)
-                    transientURLs.remove(baseResult.url)
+                if transientURLs.contains(workingURL) {
+                    try? FileManager.default.removeItem(at: workingURL)
+                    transientURLs.remove(workingURL)
                 }
-
-                finalResult = ExportOutcome(
-                    url: generated.url,
-                    sourceFPS: info.sourceFPS,
-                    outputFPS: generated.targetFPS,
-                    fpsMode: .interpolated,
-                    codecLabel: resolvedPreferHEVC ? "H.265 / HEVC" : "H.264 / AVC"
-                )
+                workingURL = generated.url
+                transientURLs.insert(workingURL)
             }
-
             try Task.checkCancellation()
 
-            // Estimate motion at source resolution before enlarging the output.
-            if wantsFrameGeneration && settings.resolution != .source {
-                let generatedInfo = try await analyzer.analyze(url: finalResult.url)
-                let resized = try await exporter.export(info: generatedInfo, settings: .init(
-                    resolution: settings.resolution, frameRate: .source, codec: settings.codec
-                )) { _ in }
-                transientURLs.insert(resized.url)
-                try? FileManager.default.removeItem(at: finalResult.url)
-                transientURLs.remove(finalResult.url)
-                finalResult = ExportOutcome(url: resized.url, sourceFPS: info.sourceFPS,
-                    outputFPS: generatedInfo.sourceFPS, fpsMode: .interpolated, codecLabel: resized.codecLabel)
-            }
-
-            if usesEnhancement {
-                processingStage = .enhancing
-                let inputURL = finalResult.url
-                let enhancedURL = try await enhancer.enhance(
-                    sourceURL: inputURL,
-                    settings: enhancement,
-                    preferHEVC: resolvedPreferHEVC
-                ) { [weak self] value in
-                    Task { @MainActor in
-                        let end = 0.97
-                        let span = max(end - enhancementStart, 0.01)
-                        self?.progress = min(
-                            max(enhancementStart + value * span, enhancementStart),
-                            end
-                        )
-                    }
+            // Final geometry/codec stage always reports progress, including 4K/120.
+            processingStage = .exporting
+            progress = finalStart
+            let workingInfo = workingURL == info.url ? info : try await analyzer.analyze(url: workingURL)
+            var finalSettings = settings
+            if wantsFrameGeneration { finalSettings.frameRate = .source }
+            let encoded = try await exporter.export(info: workingInfo, settings: finalSettings) { [weak self] value in
+                Task { @MainActor in
+                    self?.progress = finalStart + min(1, max(0, value)) * (0.97 - finalStart)
                 }
-
-                transientURLs.insert(enhancedURL)
-                if enhancedURL != inputURL {
-                    try? FileManager.default.removeItem(at: inputURL)
-                    transientURLs.remove(inputURL)
-                }
-
-                finalResult = ExportOutcome(
-                    url: enhancedURL,
-                    sourceFPS: finalResult.sourceFPS,
-                    outputFPS: finalResult.outputFPS,
-                    fpsMode: finalResult.fpsMode,
-                    codecLabel: finalResult.codecLabel
-                )
             }
+            transientURLs.insert(encoded.url)
+            if transientURLs.contains(workingURL), workingURL != encoded.url {
+                try? FileManager.default.removeItem(at: workingURL)
+                transientURLs.remove(workingURL)
+            }
+            let finalResult = ExportOutcome(url: encoded.url, sourceFPS: info.sourceFPS,
+                outputFPS: wantsFrameGeneration ? (generationPlan?.targetFPS ?? encoded.outputFPS) : encoded.outputFPS,
+                fpsMode: wantsFrameGeneration ? .interpolated : encoded.fpsMode,
+                codecLabel: encoded.codecLabel)
 
             try Task.checkCancellation()
             processingStage = .verifying

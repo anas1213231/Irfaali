@@ -116,33 +116,18 @@ final class MotionWarpFrameSynthesizer {
             throw SynthesisError.mismatchedDimensions
         }
 
-        let sourceBGRA = try makeBGRAPixelBuffer(width: width, height: height)
-        let targetBGRA = try makeBGRAPixelBuffer(width: width, height: height)
         let output = try makeBGRAPixelBuffer(width: width, height: height)
-
-        ciContext.render(
-            CIImage(cvPixelBuffer: source).cropped(to: CGRect(x: 0, y: 0, width: width, height: height)),
-            to: sourceBGRA
-        )
-        ciContext.render(
-            CIImage(cvPixelBuffer: target).cropped(to: CGRect(x: 0, y: 0, width: width, height: height)),
-            to: targetBGRA
-        )
-
-        let sourceTexture = try makeTexture(
-            pixelBuffer: sourceBGRA,
-            format: .bgra8Unorm,
-            width: width,
-            height: height,
-            name: "source frame"
-        )
-        let targetTexture = try makeTexture(
-            pixelBuffer: targetBGRA,
-            format: .bgra8Unorm,
-            width: width,
-            height: height,
-            name: "target frame"
-        )
+        func frameTexture(_ buffer: CVPixelBuffer, name: String) throws -> MetalBackedTexture {
+            if CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
+               let texture = try? makeTexture(pixelBuffer: buffer, format: .bgra8Unorm,
+                    width: width, height: height, name: name) { return texture }
+            let converted = try makeBGRAPixelBuffer(width: width, height: height)
+            ciContext.render(CIImage(cvPixelBuffer: buffer), to: converted)
+            return try makeTexture(pixelBuffer: converted, format: .bgra8Unorm,
+                width: width, height: height, name: name)
+        }
+        let sourceTexture = try frameTexture(source, name: "source frame")
+        let targetTexture = try frameTexture(target, name: "target frame")
         let forwardTexture = try makeTexture(
             pixelBuffer: forwardFlow,
             format: .rg32Float,

@@ -59,20 +59,6 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle(isOn: $preferences.animationsEnabled) {
-                    settingLabel(icon: "sparkles", ar: "الحركة", en: "Motion")
-                }
-                .tint(IrfaaliTheme.accent)
-
-                Toggle(isOn: $preferences.hapticsEnabled) {
-                    settingLabel(icon: "iphone.radiowaves.left.and.right", ar: "اهتزازات اللمس", en: "Haptic feedback")
-                }
-                .tint(IrfaaliTheme.accent)
-            } header: {
-                sectionHeader(ar: "التجربة", en: "Experience")
-            }
-
-            Section {
                 Link(destination: AppBranding.telegramURL) {
                     HStack(spacing: 12) {
                         Image(systemName: "paperplane.fill")

@@ -119,6 +119,29 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         try await assertAudioTiming(url: result)
     }
 
+    @MainActor
+    func testUnifiedPipelineEncodes4K120WithAdjustmentsAndAudio() async throws {
+        let source = try await makeFixture(rotated: true, fps: 120)
+        defer { remove(source) }
+        let model = StudioViewModel()
+        await model.importVideo(url: source)
+        model.settings = .init(resolution: .ultraHD, frameRate: .fps120, codec: .h264)
+        model.enhancement = .off
+        model.updateEnhancement(\VideoEnhancementSettings.exposure, value: 0.15)
+        let result = await model.process()
+        let output = try XCTUnwrap(result, model.errorMessage ?? "No output")
+        defer { remove(output.url) }
+        let info = try XCTUnwrap(model.outputInfo)
+        XCTAssertEqual(info.width, 2160)
+        XCTAssertEqual(info.height, 3840)
+        XCTAssertEqual(info.sourceFPS, 120, accuracy: 0.5)
+        XCTAssertEqual(model.processingStage, .complete)
+        XCTAssertEqual(model.progress, 1)
+        let frames = try await decodedFrameCount(url: output.url)
+        XCTAssertEqual(frames, 120)
+        try await assertAudioTiming(url: output.url)
+    }
+
     func testVerifierRejectsUnprocessedFileFor4KAndHigherFPSRequests() async throws {
         let source = try await makeFixture()
         defer { remove(source) }
@@ -226,7 +249,7 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         return sum / Double(width * height * 3)
     }
 
-    private func makeFixture(rotated: Bool = false) async throws -> URL {
+    private func makeFixture(rotated: Bool = false, fps: Int = 60) async throws -> URL {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -255,7 +278,7 @@ final class VideoPipelineIntegrationTests: XCTestCase {
         writer.startSession(atSourceTime: .zero)
         do {
             let deadline = Date().addingTimeInterval(30)
-            for index in 0..<60 {
+            for index in 0..<fps {
                 while !input.isReadyForMoreMediaData {
                     guard writer.status == .writing, Date() < deadline else {
                         throw writer.error ?? FixtureError.failed("Fixture writer timed out")
@@ -274,12 +297,12 @@ final class VideoPipelineIntegrationTests: XCTestCase {
                         let offset = y * stride + x * 4
                         base[offset] = UInt8((x + index * 3) % 256)
                         base[offset + 1] = UInt8(y)
-                        base[offset + 2] = UInt8(index * 4)
+                        base[offset + 2] = UInt8((index * 4) % 256)
                         base[offset + 3] = 255
                     }
                 }
                 CVPixelBufferUnlockBaseAddress(buffer, [])
-                guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(index), timescale: 60)) else {
+                guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(index), timescale: Int32(fps))) else {
                     throw writer.error ?? FixtureError.failed("Cannot append frame")
                 }
             }
