@@ -18,7 +18,7 @@ struct RootView: View {
             }
             .tabItem {
                 Label(
-                    preferences.text(ar: "التعديل", en: "Studio"),
+                    preferences.text(ar: "التعديل", en: "Editor"),
                     systemImage: "wand.and.stars"
                 )
             }
@@ -30,7 +30,7 @@ struct RootView: View {
             }
             .tabItem {
                 Label(
-                    preferences.text(ar: "فيديوهاتي", en: "Videos"),
+                    preferences.text(ar: "فيديوهاتي", en: "My videos"),
                     systemImage: "rectangle.stack.fill"
                 )
             }
@@ -53,7 +53,7 @@ struct RootView: View {
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .animation(
-            preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil,
+            preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
             value: selectedTab
         )
         .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in

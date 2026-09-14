@@ -33,7 +33,7 @@ struct StudioView: View {
 
                     if model.isAnalyzing {
                         analyzingCard
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                     }
 
                     if let info = model.info {
@@ -49,24 +49,23 @@ struct StudioView: View {
 
                     if let outcome = model.lastOutcome {
                         successCard(outcome)
-                            .transition(.scale(scale: 0.98).combined(with: .opacity))
+                            .transition(.opacity)
                     }
 
                     if let message = model.validationMessage {
-                        statusCard(message, icon: "exclamationmark.triangle.fill", color: .orange)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                        statusCard(displayMessage(message, verification: true), icon: "exclamationmark.triangle.fill", color: .orange)
+                            .transition(.opacity)
                     }
 
                     if let message = model.errorMessage {
-                        statusCard(message, icon: "exclamationmark.octagon.fill", color: .red)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                        statusCard(displayMessage(message), icon: "exclamationmark.octagon.fill", color: .red)
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 2)
                 .padding(.bottom, 36)
                 .opacity(hasAppeared ? 1 : 0)
-                .offset(y: hasAppeared ? 0 : 10)
             }
             .scrollIndicators(.hidden)
         }
@@ -85,10 +84,10 @@ struct StudioView: View {
                 }
             }
         }
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.info?.url)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isAnalyzing)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isProcessing)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.lastOutcome?.url)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.info?.url)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.isAnalyzing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.isProcessing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.lastOutcome?.url)
         .sensoryFeedback(.success, trigger: model.lastOutcome?.url) { _, _ in
             preferences.hapticsEnabled
         }
@@ -108,7 +107,7 @@ struct StudioView: View {
         .onAppear {
             guard !hasAppeared else { return }
             if preferences.animationsEnabled && !reduceMotion {
-                withAnimation(.easeOut(duration: 0.42).delay(0.05)) {
+                withAnimation(.easeInOut(duration: 0.15)) {
                     hasAppeared = true
                 }
             } else {
@@ -159,7 +158,7 @@ struct StudioView: View {
                 .font(.system(size: 40, weight: .bold))
                 .tracking(preferences.isArabic ? 0 : -1.5)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(preferences.text(ar: "عدّل الإضاءة والتفاصيل، وشاهد النتيجة قبل التصدير.", en: "Shape the light and detail. See your adjustments before exporting."))
+            Text(preferences.text(ar: "عدّل الإضاءة والتفاصيل، وشاهد النتيجة قبل التصدير.", en: "Adjust lighting and detail. Preview your changes before processing."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -188,7 +187,7 @@ struct StudioView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: 40)
             }
-            .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
+            .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
             .foregroundStyle(.secondary)
         }
         .disabled(model.isAnalyzing || model.isProcessing)
@@ -204,7 +203,7 @@ struct StudioView: View {
                     Button {
                         previewExport.toggle()
                     } label: {
-                        Text(preferences.text(ar: previewExport ? "عرض التعديل" : "عرض الملف الناتج", en: previewExport ? "Show adjustments" : "Show export"))
+                        Text(preferences.text(ar: previewExport ? "عرض التعديل" : "عرض الملف الناتج", en: previewExport ? "Show adjustments" : "Show output"))
                             .font(.caption.weight(.semibold))
                     }
                 }
@@ -214,10 +213,8 @@ struct StudioView: View {
                     ZStack {
                         VideoThumbnailView(url: info.url, isAvailable: true)
                         Color.black.opacity(0.45)
-                        PremiumProcessingScanner() // UI-UPGRADE: frosted laser overlay
                         VStack(spacing: 12) {
                             ProgressView().tint(.white)
-                                .opacity(0).accessibilityHidden(true) // UI-UPGRADE: scanner replaces the spinner visually, retaining its spacing
                             Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
                                 .font(.headline).foregroundStyle(.white)
                             Text("\(Int(model.progress * 100))%")
@@ -270,13 +267,13 @@ struct StudioView: View {
                                 .background {
                                     if model.enhancement.mode == mode {
                                         Capsule().fill(IrfaaliTheme.accent.opacity(0.2))
-                                            .matchedGeometryEffect(id: "selectedPreset", in: presetSelection)
+                                            .overlay(Capsule().stroke(IrfaaliTheme.accent.opacity(0.55), lineWidth: 1)) // UI-UPGRADE: static selection accent
                                     } else {
                                         Capsule().fill(Color.secondary.opacity(0.08))
                                     }
                                 }
                         }
-                        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
+                        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
                     }
                 }
             }
@@ -285,7 +282,7 @@ struct StudioView: View {
             enhancementControls
         }
         .disabled(model.isProcessing)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .snappy(duration: 0.25) : nil, value: model.enhancement.mode)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil, value: model.enhancement.mode)
         .sensoryFeedback(.selection, trigger: model.enhancement.mode) { _, _ in preferences.hapticsEnabled }
     }
 
@@ -321,7 +318,7 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: 15) {
                 HStack(alignment: .firstTextBaseline) {
                     Label(
-                        preferences.text(ar: "بيانات المصدر", en: "Source Details"),
+                        preferences.text(ar: "بيانات المصدر", en: "Source details"),
                         systemImage: "doc.text.image"
                     )
                     .font(.headline.weight(.bold))
@@ -349,7 +346,7 @@ struct StudioView: View {
                     )
                     SourceMetric(
                         icon: "speedometer",
-                        title: preferences.text(ar: "الفريمات", en: "Frame Rate"),
+                        title: preferences.text(ar: "الفريمات", en: "Frame rate"),
                         value: IrfaaliFormatters.fps(info.sourceFPS)
                     )
                 }
@@ -361,7 +358,7 @@ struct StudioView: View {
                     VStack(spacing: 11) {
                         detailRow(
                             icon: "film.stack",
-                            title: preferences.text(ar: "الترميز", en: "Video Codec"),
+                            title: preferences.text(ar: "الترميز", en: "Video codec"),
                             value: info.videoCodec
                         )
                         detailRow(
@@ -428,7 +425,7 @@ struct StudioView: View {
                         Text(
                             preferences.text(
                                 ar: "خيارات تناسب الفيديو اللي اخترته.",
-                                en: "Options that fit the video you chose."
+                                en: "Settings for your video."
                             )
                         )
                         .font(.caption)
@@ -438,12 +435,14 @@ struct StudioView: View {
                     Spacer(minLength: 0)
 
                     Button {
-                        withAnimation(preferences.animationsEnabled ? .snappy : nil) {
+                        withAnimation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil) {
                             model.applyRecommendedSettings()
                         }
                     } label: {
                         Text(preferences.text(ar: "موصى به", en: "Recommended"))
                             .font(.caption.weight(.bold))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false) // UI-UPGRADE: prevent English word splitting
                             .padding(.horizontal, 10)
                             .frame(minHeight: 32)
                     }
@@ -607,21 +606,21 @@ struct StudioView: View {
             .padding(.vertical, 13)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: spring press + light haptic
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
         .disabled(model.isProcessing)
     }
 
     private var enhancementControls: some View {
         VStack(spacing: 13) {
-            enhancementSlider(icon: "drop.degreesign", ar: "تنظيف التشويش", en: "Noise Cleanup", keyPath: \VideoEnhancementSettings.denoise)
+            enhancementSlider(icon: "drop.degreesign", ar: "تنظيف التشويش", en: "Noise reduction", keyPath: \VideoEnhancementSettings.denoise)
             enhancementSlider(icon: "viewfinder", ar: "وضوح التفاصيل", en: "Detail", keyPath: \VideoEnhancementSettings.detailRecovery)
             enhancementSlider(icon: "scope", ar: "الحدة", en: "Sharpening", keyPath: \VideoEnhancementSettings.sharpening)
-            enhancementSlider(icon: "circle.lefthalf.filled", ar: "حيوية اللون", en: "Color Boost", keyPath: \VideoEnhancementSettings.colorBoost)
+            enhancementSlider(icon: "circle.lefthalf.filled", ar: "حيوية اللون", en: "Color boost", keyPath: \VideoEnhancementSettings.colorBoost)
 
             Text(
                 preferences.text(
                     ar: "استخدم مستويات خفيفة للمحافظة على مظهر طبيعي.",
-                    en: "Use light levels to keep the image natural."
+                    en: "Keep adjustments subtle for a natural look."
                 )
             )
             .font(.caption)
@@ -741,7 +740,7 @@ struct StudioView: View {
                     model.cancelProcessing()
                 } label: {
                     Label(
-                        preferences.text(ar: "إلغاء المعالجة", en: "Cancel Processing"),
+                        preferences.text(ar: "إلغاء المعالجة", en: "Cancel processing"),
                         systemImage: "xmark.circle"
                     )
                     .frame(maxWidth: .infinity)
@@ -778,9 +777,9 @@ struct StudioView: View {
         case .enhancing:
             return preferences.text(ar: "تحسين كل فريم", en: "Enhancing each frame")
         case .verifying:
-            return preferences.text(ar: "قراءة الناتج من جديد", en: "Reading the output again")
+            return preferences.text(ar: "قراءة الناتج من جديد", en: "Checking the output")
         case .complete:
-            return preferences.text(ar: "تم اعتماد الملف", en: "Output accepted")
+            return preferences.text(ar: "تم اعتماد الملف", en: "Output verified")
         }
     }
 
@@ -822,7 +821,7 @@ struct StudioView: View {
         } else {
             fpsText = preferences.text(
                 ar: "الفريمات محفوظة عند \(IrfaaliFormatters.fps(outputFPS)).",
-                en: "The source cadence is preserved at \(IrfaaliFormatters.fps(outputFPS))."
+                en: "The original frame rate is preserved at \(IrfaaliFormatters.fps(outputFPS))."
             )
         }
 
@@ -873,7 +872,7 @@ struct StudioView: View {
                 }
 
                 if case .failed(let message) = model.saveState {
-                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                    Label(displayMessage(message), systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
@@ -897,7 +896,7 @@ struct StudioView: View {
             Label(preferences.text(ar: "تم الحفظ", en: "Saved"), systemImage: "checkmark")
                 .frame(maxWidth: .infinity)
         case .failed:
-            Label(preferences.text(ar: "إعادة الحفظ", en: "Try Again"), systemImage: "arrow.clockwise")
+            Label(preferences.text(ar: "إعادة الحفظ", en: "Try again"), systemImage: "arrow.clockwise")
                 .frame(maxWidth: .infinity)
         }
     }
@@ -912,6 +911,16 @@ struct StudioView: View {
         return [codec, channels, rate]
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
+    }
+
+    // UI-UPGRADE: Keep stored messages readable when the display language changes.
+    private func displayMessage(_ message: String, verification: Bool = false) -> String {
+        guard !preferences.isArabic,
+              message.unicodeScalars.contains(where: { (0x0600...0x06FF).contains(Int($0.value)) }) else { return message }
+        if message == "أُلغيت المعالجة." { return "Processing cancelled." }
+        return verification
+            ? "Frame verification failed. The output was not saved. Try keeping the original frame rate."
+            : "The operation could not finish. Check video access, available storage and Photos permission, then try again."
     }
 
     private func statusCard(_ message: String, icon: String, color: Color) -> some View {

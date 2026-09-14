@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// A short, deterministic hand-off from the iOS launch screen to the app.
-///
-/// The launch artwork is deliberately complete: it is never clipped or
-/// recoloured. A restrained fade and settle reveals the logo, followed by the
-/// wordmark, with a minimum presentation time so it remains visible when Reduce
-/// Motion is enabled.
+/// UI-UPGRADE: Brief opacity-only launch using the unchanged official artwork.
 struct AppLaunchView: View {
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -41,7 +36,6 @@ struct AppLaunchView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 240, height: 240)
-                    .scaleEffect(logoIsVisible ? 1 : 0.96)
                     .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
 
@@ -50,13 +44,11 @@ struct AppLaunchView: View {
                         .font(.system(size: 28, weight: .semibold, design: .default))
                         .foregroundStyle(Color(red: 0.06, green: 0.14, blue: 0.23))
                         .opacity(wordmarkIsVisible ? 1 : 0)
-                        .offset(y: wordmarkIsVisible ? 0 : 8)
 
                     Text(preferences.text(ar: "ارفعها. واضبطها.", en: "Upload. Refine. Done."))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Color(red: 0.29, green: 0.36, blue: 0.43))
                         .opacity(wordmarkIsVisible ? 1 : 0)
-                        .offset(y: wordmarkIsVisible ? 0 : 8)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -65,36 +57,11 @@ struct AppLaunchView: View {
     }
 
     private func completeLaunch() async {
-        // Keep the logo on screen long enough to be seen. The movement is a
-        // single soft settle rather than a bounce or a rotation, so it feels
-        // native to iOS while still making the launch state unmistakable.
-        let minimumDuration: Duration = preferences.animationsEnabled && !reduceMotion
-            ? .milliseconds(550)
-            : .milliseconds(250)
-
+        // UI-UPGRADE: No stagger, scaling or forced splash-screen hold.
+        logoIsVisible = true
+        wordmarkIsVisible = true
         if preferences.animationsEnabled && !reduceMotion {
-            withAnimation(.easeOut(duration: 0.34)) {
-                logoIsVisible = true
-            }
-
-            do { try await Task.sleep(for: .milliseconds(140)) } catch { return }
-
-            withAnimation(.easeOut(duration: 0.24)) {
-                wordmarkIsVisible = true
-            }
-        } else {
-            logoIsVisible = true
-            wordmarkIsVisible = true
-        }
-
-        do {
-            try await Task.sleep(for: minimumDuration)
-        } catch {
-            return
-        }
-
-        if preferences.animationsEnabled && !reduceMotion {
-            withAnimation(.easeInOut(duration: 0.30)) {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 isReady = true
             }
         } else {

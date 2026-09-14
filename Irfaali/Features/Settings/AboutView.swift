@@ -52,14 +52,14 @@ struct AboutView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "crown.fill")
                         .foregroundStyle(IrfaaliTheme.accent)
-                    Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER IDENTITY"))
+                    Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER"))
                         .font(.caption2.bold())
                         .tracking(preferences.isArabic ? 0.2 : 1.8)
                         .foregroundStyle(.secondary)
                 }
 
                 HStack(spacing: 5) {
-                    Text(preferences.text(ar: "المالك والمطور", en: "Created & Owned by"))
+                    Text(preferences.text(ar: "المالك والمطور", en: "Developer and owner"))
                         .foregroundStyle(.primary)
                     Link(AppBranding.ownerHandle, destination: AppBranding.telegramURL)
                         .fontWeight(.bold)
@@ -110,7 +110,7 @@ struct AboutView: View {
                     .font(.title2)
                     .foregroundStyle(IrfaaliTheme.accent)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean Output"))
+                    Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean output"))
                         .font(.headline.weight(.bold))
                     Text(
                         preferences.text(

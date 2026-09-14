@@ -30,7 +30,7 @@ struct HistoryView: View {
             }
         }
         .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: existing links, menus and buttons
-        .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "Videos"))
+        .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "My videos"))
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
@@ -47,7 +47,7 @@ struct HistoryView: View {
             Text(
                 preferences.text(
                     ar: "أول فيديو تضبطه بيطلع لك هني بكل بياناته.",
-                    en: "Your processed videos will appear here with their real output details."
+                    en: "Your processed videos will appear here with their output details."
                 )
             )
         }
@@ -56,7 +56,7 @@ struct HistoryView: View {
     private var libraryHeader: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(preferences.text(ar: "شغلك كله بمكان واحد", en: "Your processed library"))
+                Text(preferences.text(ar: "شغلك كله بمكان واحد", en: "Your videos"))
                     .font(.title3.weight(.bold))
                 Text(
                     preferences.text(

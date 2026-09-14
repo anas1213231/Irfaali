@@ -29,7 +29,7 @@ struct SettingsView: View {
             Section {
                 ForEach([AppPreferences.Appearance.light, .dark]) { appearance in
                     Button {
-                        withAnimation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil) {
+                        withAnimation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil) {
                             preferences.appearance = appearance
                         }
                     } label: {
@@ -114,14 +114,13 @@ struct SettingsView: View {
         .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: existing links, menus and buttons
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
         .navigationBarTitleDisplayMode(.large)
-        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil, value: preferences.language)
-        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil, value: preferences.appearance)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.language)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.appearance)
         .opacity(hasAppeared ? 1 : 0)
-        .offset(y: hasAppeared ? 0 : 10)
         .onAppear {
             guard !hasAppeared else { return }
             if preferences.animationsEnabled && !reduceMotion {
-                withAnimation(.easeOut(duration: 0.40).delay(0.05)) {
+                withAnimation(.easeInOut(duration: 0.15)) {
                     hasAppeared = true
                 }
             } else {
