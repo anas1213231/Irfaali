@@ -84,7 +84,7 @@ struct ThemeBackground: View {
             }
         }
         .ignoresSafeArea()
-        .animation(.easeInOut(duration: preferences.animationsEnabled ? 0.38 : 0), value: preferences.appearance)
+        .animation(.easeInOut(duration: preferences.animationsEnabled ? 0.15 : 0), value: preferences.appearance)
     }
 
     @ViewBuilder
