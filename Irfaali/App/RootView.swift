@@ -14,6 +14,7 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 StudioView()
+                    .modifier(AppLanguageLayout()) // UI-UPGRADE: keep native bars aligned on tab entry
                     .modifier(PremiumTabEntrance(isSelected: selectedTab == .studio)) // UI-UPGRADE
             }
             .tabItem {
@@ -26,6 +27,7 @@ struct RootView: View {
 
             NavigationStack {
                 HistoryView()
+                    .modifier(AppLanguageLayout()) // UI-UPGRADE: keep native bars aligned on tab entry
                     .modifier(PremiumTabEntrance(isSelected: selectedTab == .videos)) // UI-UPGRADE
             }
             .tabItem {
@@ -38,6 +40,7 @@ struct RootView: View {
 
             NavigationStack {
                 SettingsView()
+                    .modifier(AppLanguageLayout()) // UI-UPGRADE: keep native bars aligned on tab entry
                     .modifier(PremiumTabEntrance(isSelected: selectedTab == .settings)) // UI-UPGRADE
             }
             .tabItem {
@@ -48,6 +51,7 @@ struct RootView: View {
             }
             .tag(Tab.settings)
         }
+        .modifier(AppLanguageLayout()) // UI-UPGRADE: react to in-app language changes
         .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: inherited by navigation destinations
         .tint(IrfaaliTheme.accent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
