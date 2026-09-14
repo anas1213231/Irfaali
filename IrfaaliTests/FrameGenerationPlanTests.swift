@@ -14,12 +14,31 @@ final class FrameGenerationPlanTests: XCTestCase {
         let plan = FrameGenerationPlan.make(sourceFPS: 59.94, targetFPS: 120)
 
         XCTAssertEqual(plan?.strategy, .opticalFlow2x)
-        XCTAssertEqual(plan?.generatedFramesPerSourceGap, 1)
+        XCTAssertEqual(plan?.generatedFramesPerSourceGap, 2)
     }
 
     func testUnsupportedRatioIsRejectedInsteadOfFaked() {
-        XCTAssertNil(FrameGenerationPlan.make(sourceFPS: 24, targetFPS: 60))
-        XCTAssertNil(FrameGenerationPlan.make(sourceFPS: 30, targetFPS: 120))
+        XCTAssertNotNil(FrameGenerationPlan.make(sourceFPS: 24, targetFPS: 60))
+        XCTAssertNotNil(FrameGenerationPlan.make(sourceFPS: 30, targetFPS: 120))
+    }
+
+    func testTargetClockForCommonSources() throws {
+        for source in [24.0, 25, 29.97, 30, 50, 59.94] {
+            for target in [60.0, 120] where target > source + 0.5 {
+                let plan = try XCTUnwrap(FrameGenerationPlan.make(sourceFPS: source, targetFPS: target))
+                var next = 0
+                var samples: [(time: Double, fraction: Double)] = []
+                for i in 0..<Int(ceil(source)) {
+                    samples += plan.samples(from: Double(i) / source, to: min(1, Double(i + 1) / source), nextIndex: &next)
+                }
+                XCTAssertEqual(samples.count, Int(target))
+                for (index, sample) in samples.enumerated() {
+                    XCTAssertEqual(sample.time, Double(index) / target, accuracy: 0.000001)
+                    XCTAssertTrue((0...1).contains(sample.fraction))
+                }
+                XCTAssertTrue(samples.contains { $0.fraction > 0.01 && $0.fraction < 0.99 })
+            }
+        }
     }
 
     func testLowerTargetNeedsNoGeneration() {

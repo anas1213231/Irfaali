@@ -169,10 +169,6 @@ struct StudioView: View {
 
     private var studioIntro: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Image("OfficialLogo")
-                .resizable().scaledToFit()
-                .frame(width: 72, height: 72)
-                .padding(.top, 24)
             Text(preferences.text(ar: "كل لقطة.\nبشكل أفضل.", en: "Every frame.\nRefined."))
                 .font(.system(size: 40, weight: .bold))
                 .tracking(preferences.isArabic ? 0 : -1.5)

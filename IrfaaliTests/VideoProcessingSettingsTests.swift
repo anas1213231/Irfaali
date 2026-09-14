@@ -44,7 +44,7 @@ final class VideoProcessingSettingsTests: XCTestCase {
         )
         XCTAssertEqual(
             VideoProcessingSettings.supportedFrameRates(for: info),
-            [.source, .fps30, .fps60]
+            [.source, .fps30, .fps60, .fps120]
         )
     }
 

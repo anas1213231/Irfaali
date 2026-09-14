@@ -20,7 +20,7 @@ final class FrameGenerationService {
         var errorDescription: String? {
             switch self {
             case .unsupportedPlan:
-                return "ارفعلي يدعم حاليًا توليد 2× الحقيقي فقط، مثل 30→60 أو 60→120."
+                return "معدل الفريمات المطلوب خارج نطاق التوليد المدعوم (حتى 120 FPS و8× المصدر)."
             case .missingVideoTrack:
                 return "ما لقينا مسار فيديو صالح لتوليد الفريمات."
             case .invalidVideoDimensions:
@@ -211,6 +211,7 @@ final class FrameGenerationService {
             var previousBuffer: CVPixelBuffer?
             var previousPTS: CMTime?
             var originPTS: CMTime?
+            var nextOutputIndex = 0
             var sourceFrameCount = 0
             var generatedFrameCount = 0
             var sceneCutFallbackFrameCount = 0
@@ -228,62 +229,31 @@ final class FrameGenerationService {
                 if originPTS == nil {
                     originPTS = currentPTS
                 }
-                sourceFrameCount += 1
 
                 if let previousBuffer, let previousPTS, let originPTS {
-                    try append(
-                        previousBuffer,
-                        at: CMTimeSubtract(previousPTS, originPTS),
-                        adaptor: adaptor,
-                        writerInput: writerInput,
-                        writer: writer
-                    )
-
+                    let start = CMTimeSubtract(previousPTS, originPTS).seconds
+                    let end = CMTimeSubtract(currentPTS, originPTS).seconds
                     let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
-                    let fractions = plan.intermediateFractions()
-                    let gap = CMTimeSubtract(currentPTS, previousPTS)
-
-                    if cut.isCut {
-                        // A hard edit has no physically meaningful optical-flow path.
-                        // Keep the previous shot until the real cut timestamp, and count
-                        // the inserted cadence sample separately from synthesized frames.
-                        for fraction in fractions {
-                            try Task.checkCancellation()
-                            let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
-                            let fallbackPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
-                            try append(
-                                previousBuffer,
-                                at: fallbackPTS,
-                                adaptor: adaptor,
-                                writerInput: writerInput,
-                                writer: writer
-                            )
-                            sceneCutFallbackFrameCount += 1
-                        }
-                    } else {
-                        let forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
+                    let samples = plan.samples(from: start, to: end, nextIndex: &nextOutputIndex)
+                    var forward: CVPixelBuffer?
+                    var backward: CVPixelBuffer?
+                    for sample in samples {
                         try Task.checkCancellation()
-                        let backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
-
-                        for fraction in fractions {
-                            try Task.checkCancellation()
-                            let generated = try synthesizer.synthesize(
-                                source: previousBuffer,
-                                target: currentBuffer,
-                                forwardFlow: forward,
-                                backwardFlow: backward,
-                                fraction: fraction
-                            )
-
-                            let offset = CMTimeMultiplyByFloat64(gap, multiplier: fraction)
-                            let generatedPTS = CMTimeSubtract(CMTimeAdd(previousPTS, offset), originPTS)
-                            try append(
-                                generated,
-                                at: generatedPTS,
-                                adaptor: adaptor,
-                                writerInput: writerInput,
-                                writer: writer
-                            )
+                        let time = CMTime(seconds: sample.time, preferredTimescale: 60_000)
+                        if sample.fraction < 0.000001 {
+                            try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
+                            sourceFrameCount += 1
+                        } else if cut.isCut {
+                            try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
+                            sceneCutFallbackFrameCount += 1
+                        } else {
+                            if forward == nil {
+                                forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
+                                backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
+                            }
+                            let frame = try synthesizer.synthesize(source: previousBuffer, target: currentBuffer,
+                                forwardFlow: forward!, backwardFlow: backward!, fraction: sample.fraction)
+                            try append(frame, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
                             generatedFrameCount += 1
                         }
                     }
@@ -305,14 +275,16 @@ final class FrameGenerationService {
             }
 
             if let previousBuffer, let previousPTS, let originPTS {
-                try append(
-                    previousBuffer,
-                    at: CMTimeSubtract(previousPTS, originPTS),
-                    adaptor: adaptor,
-                    writerInput: writerInput,
-                    writer: writer
-                )
+                let start = CMTimeSubtract(previousPTS, originPTS).seconds
+                let end = max(start, durationSeconds - originPTS.seconds)
+                for sample in plan.samples(from: start, to: end, nextIndex: &nextOutputIndex) {
+                    try append(previousBuffer, at: CMTime(seconds: sample.time, preferredTimescale: 60_000),
+                        adaptor: adaptor, writerInput: writerInput, writer: writer)
+                    if sample.fraction < 0.000001 { sourceFrameCount += 1 }
+                    else { sceneCutFallbackFrameCount += 1 } // Hold the last image through its remaining duration.
+                }
             }
+            writer.endSession(atSourceTime: CMTime(seconds: durationSeconds - (originPTS?.seconds ?? 0), preferredTimescale: 60_000))
 
             writerInput.markAsFinished()
             try Task.checkCancellation()
