@@ -48,6 +48,7 @@ struct RootView: View {
             }
             .tag(Tab.settings)
         }
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: inherited by navigation destinations
         .tint(IrfaaliTheme.accent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

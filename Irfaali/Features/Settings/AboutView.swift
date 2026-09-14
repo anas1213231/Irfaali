@@ -92,7 +92,7 @@ struct AboutView: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
 
                 Divider().opacity(0.25)
 
