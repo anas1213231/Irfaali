@@ -95,7 +95,7 @@ final class FrameGenerationReadinessTests: XCTestCase {
 
     func testUnsupportedRatioIsBlocked() {
         let readiness = FrameGenerationReadiness.evaluate(
-            plan: FrameGenerationPlan.make(sourceFPS: 30, targetFPS: 120),
+            plan: FrameGenerationPlan.make(sourceFPS: 10, targetFPS: 120),
             width: 1920,
             height: 1080,
             environment: .init(
