@@ -10,16 +10,13 @@ struct SettingsView: View {
             ThemeBackground()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 34) {
-                    settingsHero
-
+                VStack(alignment: .leading, spacing: 30) {
                     settingsSection(title: preferences.text(ar: "اللغة", en: "Language")) {
                         Menu {
                             Button("العربية") { preferences.language = .arabic }
                             Button("English") { preferences.language = .english }
                         } label: {
                             settingsRow(
-                                icon: "character.bubble",
                                 title: preferences.text(ar: "لغة التطبيق", en: "App language"),
                                 value: preferences.isArabic ? "العربية" : "English",
                                 showsChevron: true
@@ -32,16 +29,16 @@ struct SettingsView: View {
                     }
 
                     settingsSection(title: preferences.text(ar: "المظهر", en: "Appearance")) {
-                        HStack(spacing: 10) {
+                        VStack(spacing: 0) {
                             appearanceButton(.dark)
+                            IrfaaliHairline()
                             appearanceButton(.light)
                         }
                     }
 
-                    settingsSection(title: preferences.text(ar: "حول التطبيق", en: "About")) {
+                    settingsSection(title: preferences.text(ar: "ارفعلي", en: "Irfaali")) {
                         Link(destination: AppBranding.telegramURL) {
                             settingsRow(
-                                icon: "paperplane",
                                 title: preferences.text(ar: "المطور والمالك", en: "Developer and owner"),
                                 value: AppBranding.ownerHandle,
                                 showsChevron: true
@@ -49,13 +46,12 @@ struct SettingsView: View {
                         }
                         .buttonStyle(VIPPlainButtonStyle())
 
-                        IrfaaliHairline(leadingInset: 48)
+                        IrfaaliHairline()
 
                         NavigationLink {
                             AboutView()
                         } label: {
                             settingsRow(
-                                icon: "info.circle",
                                 title: preferences.text(ar: "عن ارفعلي", en: "About Irfaali"),
                                 value: nil,
                                 showsChevron: true
@@ -65,43 +61,43 @@ struct SettingsView: View {
                     }
 
                     settingsSection(title: preferences.text(ar: "الإصدار", en: "Version")) {
-                        HStack {
+                        HStack(alignment: .firstTextBaseline) {
                             Text(preferences.text(ar: "نسخة التطبيق", en: "App version"))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.white)
 
                             Spacer()
 
                             Text(versionText)
-                                .font(.subheadline.monospacedDigit().weight(.bold))
-                                .foregroundStyle(.white)
+                                .font(.subheadline.monospacedDigit().weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(minHeight: 44)
+                        .frame(minHeight: 48)
                     }
 
                     Text(AppBranding.copyright)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.top, 2)
+                        .padding(.top, 8)
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 44)
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 48)
                 .opacity(hasAppeared ? 1 : 0)
-                .offset(y: hasAppeared ? 0 : 8)
+                .offset(y: hasAppeared ? 0 : 5)
             }
             .scrollIndicators(.hidden)
         }
         .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.language)
         .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.appearance)
         .onAppear {
             guard !hasAppeared else { return }
             if preferences.animationsEnabled && !reduceMotion {
-                withAnimation(.easeOut(duration: 0.28)) {
+                withAnimation(.easeOut(duration: 0.20)) {
                     hasAppeared = true
                 }
             } else {
@@ -110,32 +106,15 @@ struct SettingsView: View {
         }
     }
 
-    private var settingsHero: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(preferences.text(ar: "على مزاجك.", en: "Make it yours."))
-                .font(.system(size: 36, weight: .bold))
-                .tracking(preferences.isArabic ? 0 : -1.0)
-
-            Text(
-                preferences.text(
-                    ar: "لغة ومظهر، بدون زحمة.",
-                    en: "Language and appearance, without the clutter."
-                )
-            )
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-        }
-    }
-
     @ViewBuilder
     private func settingsSection<Content: View>(
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title.uppercased(with: preferences.locale))
-                .font(.caption2.weight(.bold))
-                .tracking(preferences.isArabic ? 0.2 : 1.4)
+                .font(.caption2.weight(.semibold))
+                .tracking(preferences.isArabic ? 0.15 : 1.15)
                 .foregroundStyle(.tertiary)
 
             content()
@@ -143,37 +122,31 @@ struct SettingsView: View {
     }
 
     private func settingsRow(
-        icon: String,
         title: String,
         value: String?,
         showsChevron: Bool
     ) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.84))
-                .frame(width: 34, height: 34)
-
+        HStack(spacing: 12) {
             Text(title)
-                .font(.body.weight(.semibold))
+                .font(.body.weight(.medium))
                 .foregroundStyle(.white)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 12)
 
             if let value {
                 Text(value)
-                    .font(.subheadline.weight(.medium))
+                    .font(.subheadline.weight(.regular))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if showsChevron {
                 Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.tertiary)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.28))
             }
         }
-        .frame(minHeight: 50)
+        .frame(minHeight: 52)
         .contentShape(Rectangle())
     }
 
@@ -185,36 +158,22 @@ struct SettingsView: View {
                 preferences.appearance = appearance
             }
         } label: {
-            VStack(alignment: .leading, spacing: 13) {
-                HStack {
-                    appearanceSwatch(for: appearance)
-                    Spacer()
-                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(
-                            selected
-                                ? IrfaaliVisual.electricCyan
-                                : Color.white.opacity(0.28)
-                        )
-                }
+            HStack(spacing: 13) {
+                appearanceSwatch(for: appearance)
 
                 Text(preferences.appearanceName(appearance))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(selected ? .white : .secondary)
+                    .font(.body.weight(selected ? .semibold : .medium))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Image(systemName: selected ? "checkmark" : "")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(selected ? IrfaaliVisual.electricCyan : Color.clear)
+                    .frame(width: 18)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 94, alignment: .leading)
-            .background(
-                selected ? IrfaaliVisual.electricCyan.opacity(0.07) : IrfaaliVisual.quieterFill,
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(
-                        selected ? IrfaaliVisual.electricCyan.opacity(0.34) : IrfaaliVisual.hairline,
-                        lineWidth: selected ? 0.8 : 0.5
-                    )
-            }
+            .frame(minHeight: 54)
+            .contentShape(Rectangle())
         }
         .buttonStyle(VIPPlainButtonStyle())
     }
@@ -227,17 +186,17 @@ struct SettingsView: View {
         case .pureBlack:
             colors = [.black, .black]
         case .dark:
-            colors = [Color(white: 0.22), .black]
+            colors = [Color(white: 0.16), .black]
         case .light:
-            colors = [Color(white: 0.72), .white]
+            colors = [Color(white: 0.70), .white]
         case .pureWhite:
             colors = [.white, .white]
         }
 
         return Circle()
             .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.5))
-            .frame(width: 28, height: 28)
+            .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 0.5))
+            .frame(width: 20, height: 20)
     }
 
     private var versionText: String {
