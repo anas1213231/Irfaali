@@ -25,6 +25,14 @@ struct SettingsView: View {
                     )
                 )
             }
+            .listRowBackground(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                }
+            )
 
             Section {
                 ForEach([AppPreferences.Appearance.light, .dark]) { appearance in
@@ -38,7 +46,7 @@ struct SettingsView: View {
 
                             Text(preferences.appearanceName(appearance))
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
 
                             Spacer(minLength: 0)
 
@@ -46,31 +54,44 @@ struct SettingsView: View {
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(
                                     preferences.appearance == appearance
-                                        ? IrfaaliTheme.accent
+                                        ? Color.white
                                         : Color.secondary.opacity(0.65)
                                 )
                         }
                         .contentShape(Rectangle())
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             } header: {
                 sectionHeader(ar: "المظهر", en: "Appearance")
             }
+            .listRowBackground(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                }
+            )
 
             Section {
                 Link(destination: AppBranding.telegramURL) {
                     HStack(spacing: 12) {
                         Image(systemName: "paperplane.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(IrfaaliTheme.accent)
+                            .foregroundStyle(.white)
                             .frame(width: 30, height: 30)
-                            .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                            }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(preferences.text(ar: "المطور والمالك", en: "Developer and owner"))
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                             Text(AppBranding.ownerHandle)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -80,8 +101,9 @@ struct SettingsView: View {
 
                         Image(systemName: "arrow.up.right")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(.secondary)
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
 
                 NavigationLink {
@@ -92,6 +114,14 @@ struct SettingsView: View {
             } header: {
                 sectionHeader(ar: "حول التطبيق", en: "About")
             }
+            .listRowBackground(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                }
+            )
 
             Section {
                 HStack {
@@ -100,13 +130,22 @@ struct SettingsView: View {
                     Spacer()
                     Text(versionText)
                         .font(.body.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                 }
             } footer: {
                 Text(AppBranding.copyright)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+            .listRowBackground(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                }
+            )
         }
+        .foregroundStyle(.white)
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(ThemeBackground())
@@ -131,12 +170,13 @@ struct SettingsView: View {
     private func sectionHeader(ar: String, en: String) -> some View {
         Text(preferences.text(ar: ar, en: en))
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(IrfaaliTheme.accent)
+            .foregroundStyle(.secondary)
     }
 
     private func settingLabel(icon: String, ar: String, en: String) -> some View {
         Label(preferences.text(ar: ar, en: en), systemImage: icon)
             .font(.body.weight(.medium))
+            .foregroundStyle(.white)
     }
 
     private func appearanceSwatch(for appearance: AppPreferences.Appearance) -> some View {
@@ -149,14 +189,14 @@ struct SettingsView: View {
         case .dark:
             colors = [IrfaaliTheme.secondaryInk, IrfaaliTheme.ink]
         case .light:
-            colors = [Color(red: 0.80, green: 0.89, blue: 1.0), .white]
+            colors = [Color(white: 0.72), .white]
         case .pureWhite:
             colors = [.white, .white]
         }
 
         return Circle()
             .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(Circle().stroke(.secondary.opacity(0.28), lineWidth: 1))
+            .overlay(Circle().stroke(.white.opacity(0.20), lineWidth: 0.5))
             .frame(width: 28, height: 28)
     }
 

@@ -70,6 +70,7 @@ struct StudioView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "ارفعلي", en: "Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -234,7 +235,11 @@ struct StudioView: View {
                 Text(preferences.text(ar: previewExport ? "الناتج" : (showOriginal ? "الأصل" : "التعديل"), en: previewExport ? "EXPORTED" : (showOriginal ? "ORIGINAL" : "ADJUSTED")))
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(.regularMaterial, in: Capsule())
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(.white.opacity(0.14), lineWidth: 0.5)
+                    }
                     .padding(12)
             }
             if !previewExport && !model.isProcessing {
@@ -265,11 +270,17 @@ struct StudioView: View {
                                 .padding(.horizontal, 16).padding(.vertical, 12)
                                 .background {
                                     if model.enhancement.mode == mode {
-                                        Capsule().fill(IrfaaliTheme.accent.opacity(0.2))
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(.ultraThinMaterial)
                                             .matchedGeometryEffect(id: "selectedPreset", in: presetSelection)
                                     } else {
-                                        Capsule().fill(Color.secondary.opacity(0.08))
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(.ultraThinMaterial)
                                     }
+                                }
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(.white.opacity(model.enhancement.mode == mode ? 0.22 : 0.10), lineWidth: 0.5)
                                 }
                         }
                         .buttonStyle(.plain)
@@ -292,7 +303,11 @@ struct StudioView: View {
                     .controlSize(.regular)
                     .tint(IrfaaliTheme.accent)
                     .frame(width: 32, height: 32)
-                    .background(IrfaaliTheme.accent.opacity(0.10), in: Circle())
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(.white.opacity(0.14), lineWidth: 0.5)
+                    }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(preferences.text(ar: "جاري قراءة الفيديو", en: "Reading the video"))
@@ -326,10 +341,14 @@ struct StudioView: View {
 
                     Text(info.dynamicRange)
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .background(IrfaaliTheme.accent.opacity(0.11), in: Capsule())
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+                        }
                 }
 
                 Text(info.fileName)
@@ -392,7 +411,7 @@ struct StudioView: View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
                 .frame(width: 22)
 
             Text(title)
@@ -414,9 +433,13 @@ struct StudioView: View {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "slider.horizontal.3")
                         .font(.headline.weight(.semibold))
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.white)
                         .frame(width: 38, height: 38)
-                        .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+                        }
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(preferences.text(ar: "تعديل", en: "Edit"))
@@ -553,7 +576,7 @@ struct StudioView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(PremiumPrimaryButtonStyle())
+                    .buttonStyle(PremiumProcessButtonStyle())
                     .disabled(model.isAnalyzing || model.isProcessing)
                     
                     .padding(.top, 16)
@@ -580,7 +603,7 @@ struct StudioView: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(IrfaaliTheme.accent)
+                    .foregroundStyle(.white)
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -588,7 +611,7 @@ struct StudioView: View {
                         .font(.subheadline.weight(.semibold))
                     Text(value)
                         .font(.caption)
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
@@ -602,6 +625,7 @@ struct StudioView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 13)
             .contentShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(model.isProcessing)
@@ -625,7 +649,11 @@ struct StudioView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
     }
 
     private func enhancementSlider(
@@ -644,7 +672,7 @@ struct StudioView: View {
                 Spacer()
                 Text("\(Int((value * 100).rounded()))%")
                     .font(.caption.monospacedDigit().bold())
-                    .foregroundStyle(IrfaaliTheme.accent)
+                    .foregroundStyle(.secondary)
             }
 
             Slider(
@@ -654,7 +682,7 @@ struct StudioView: View {
                 ),
                 in: range
             )
-            .tint(IrfaaliTheme.accent)
+            .tint(IrfaaliTheme.activeAccent)
             .disabled(model.isProcessing)
         }
     }
@@ -667,9 +695,13 @@ struct StudioView: View {
         return HStack(spacing: 12) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.title3)
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(IrfaaliTheme.accent.opacity(0.10), in: Circle())
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.14), lineWidth: 0.5)
+                }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(preferences.text(ar: "الناتج المتوقع", en: "Expected output"))
@@ -685,7 +717,11 @@ struct StudioView: View {
             Spacer(minLength: 0)
         }
         .padding(13)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
     }
 
     private var processingProgress: some View {
@@ -693,14 +729,14 @@ struct StudioView: View {
             HStack(spacing: 11) {
                 ZStack {
                     Circle()
-                        .stroke(IrfaaliTheme.accent.opacity(0.16), lineWidth: 4)
+                        .stroke(.white.opacity(0.16), lineWidth: 4)
                     Circle()
                         .trim(from: 0, to: max(0.04, model.progress))
-                        .stroke(IrfaaliTheme.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .stroke(.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     Image(systemName: processingStageIcon)
                         .font(.caption.bold())
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.white)
                 }
                 .frame(width: 46, height: 46)
 
@@ -716,11 +752,11 @@ struct StudioView: View {
 
                 Text("\(Int(model.progress * 100))%")
                     .font(.headline.monospacedDigit().bold())
-                    .foregroundStyle(IrfaaliTheme.accent)
+                    .foregroundStyle(.white)
             }
 
             ProgressView(value: model.progress)
-                .tint(IrfaaliTheme.accent)
+                .tint(.white)
 
             Text(
                 preferences.text(
@@ -745,7 +781,11 @@ struct StudioView: View {
             }
         }
         .padding(13)
-        .background(IrfaaliTheme.accent.opacity(0.065), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
     }
 
     private var processingStageIcon: String {
@@ -828,7 +868,7 @@ struct StudioView: View {
                     systemImage: "checkmark.seal.fill"
                 )
                 .font(.headline.bold())
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
 
                 Text(fpsText)
                     .font(.subheadline)
@@ -927,7 +967,7 @@ private struct SourceMetric: View {
         VStack(alignment: .leading, spacing: 7) {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -953,11 +993,13 @@ private struct ComparisonColumn: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.bold())
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.secondary)
             Text(resolution)
                 .font(.subheadline.bold())
+                .foregroundStyle(.white)
             Text(fps)
                 .font(.caption.monospacedDigit())
+                .foregroundStyle(.white)
             Text(codec)
                 .font(.caption)
                 .lineLimit(1)
@@ -966,10 +1008,11 @@ private struct ComparisonColumn: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(11)
-        .background(
-            colorScheme == .dark ? Color.white.opacity(0.045) : Color.black.opacity(0.035),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
+        }
     }
 }
 
@@ -981,11 +1024,37 @@ private struct PremiumPrimaryButtonStyle: ButtonStyle {
             .font(.headline.weight(.bold))
             .padding(.horizontal, 16)
             .frame(minHeight: 52)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(configuration.isPressed ? 0.26 : 0.16), lineWidth: 0.5)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .foregroundStyle(.white)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
+            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+    }
+}
+
+private struct PremiumProcessButtonStyle: ButtonStyle {
+    @EnvironmentObject private var preferences: AppPreferences
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.bold))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 52)
             .background(
-                IrfaaliTheme.accent.opacity(configuration.isPressed ? 0.74 : 0.96),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                IrfaaliTheme.activeAccent.opacity(configuration.isPressed ? 0.82 : 1),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
-            .foregroundStyle(Color.black)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(0.22), lineWidth: 0.5)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .foregroundStyle(.white)
+            .shadow(color: IrfaaliTheme.activeAccent.opacity(0.18), radius: 12, y: 5)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
             .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
     }
@@ -1000,17 +1069,13 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
             .font(.subheadline.weight(.bold))
             .padding(.horizontal, 13)
             .frame(minHeight: 48)
-            .background(
-                colorScheme == .dark
-                    ? Color.white.opacity(configuration.isPressed ? 0.10 : 0.055)
-                    : Color.white.opacity(configuration.isPressed ? 0.92 : 0.76),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(colorScheme == .dark ? .white.opacity(0.11) : .black.opacity(0.08), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(configuration.isPressed ? 0.22 : 0.14), lineWidth: 0.5)
             }
-            .foregroundStyle(.primary)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .foregroundStyle(.white)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
     }
 }
@@ -1023,14 +1088,12 @@ private struct PremiumDestructiveButtonStyle: ButtonStyle {
             .font(.subheadline.weight(.bold))
             .padding(.horizontal, 14)
             .frame(minHeight: 46)
-            .background(
-                Color.red.opacity(configuration.isPressed ? 0.16 : 0.08),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.red.opacity(configuration.isPressed ? 0.42 : 0.22), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.red.opacity(configuration.isPressed ? 0.42 : 0.28), lineWidth: 0.5)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(.red)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
             .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)

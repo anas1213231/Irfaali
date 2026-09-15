@@ -18,6 +18,7 @@ struct AboutView: View {
                 .padding(.bottom, 36)
             }
         }
+        .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -35,6 +36,7 @@ struct AboutView: View {
                 VStack(spacing: 6) {
                     Text(AppBranding.appName)
                         .font(IrfaaliTheme.titleFont(32))
+                        .foregroundStyle(.white)
                     Text(preferences.text(ar: "معالجة فيديو موثوقة", en: "Verified video processing"))
                         .font(.subheadline.weight(.semibold))
                         .tracking(0.3)
@@ -51,7 +53,7 @@ struct AboutView: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 10) {
                     Image(systemName: "crown.fill")
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.white)
                     Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER IDENTITY"))
                         .font(.caption2.bold())
                         .tracking(preferences.isArabic ? 0.2 : 1.8)
@@ -60,20 +62,22 @@ struct AboutView: View {
 
                 HStack(spacing: 5) {
                     Text(preferences.text(ar: "المالك والمطور", en: "Created & Owned by"))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(.white)
                     Link(AppBranding.ownerHandle, destination: AppBranding.telegramURL)
                         .fontWeight(.bold)
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(.white)
                 }
                 .font(.headline)
 
                 Link(destination: AppBranding.telegramURL) {
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(IrfaaliTheme.accent.opacity(0.12))
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(.white.opacity(0.15), lineWidth: 0.5)
                             Image(systemName: "paperplane.fill")
-                                .foregroundStyle(IrfaaliTheme.accent)
+                                .foregroundStyle(.white)
                         }
                         .frame(width: 44, height: 44)
 
@@ -83,7 +87,7 @@ struct AboutView: View {
                                 .foregroundStyle(.secondary)
                             Text(AppBranding.ownerHandle)
                                 .font(.subheadline.bold())
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.white)
                         }
                         Spacer()
                         Image(systemName: "arrow.up.right")
@@ -91,6 +95,7 @@ struct AboutView: View {
                             .foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -108,10 +113,11 @@ struct AboutView: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: "checkmark.shield.fill")
                     .font(.title2)
-                    .foregroundStyle(IrfaaliTheme.accent)
+                    .foregroundStyle(.white)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean Output"))
                         .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
                     Text(
                         preferences.text(
                             ar: "تظهر هوية ارفعلي داخل التطبيق فقط. لا نضيف علامة مائية أو مقدمة أو خاتمة على فيديوك.",

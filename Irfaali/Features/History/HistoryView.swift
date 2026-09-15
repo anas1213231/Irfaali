@@ -29,10 +29,13 @@ struct HistoryView: View {
                 }
             }
         }
+        .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "Videos"))
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
+                .presentationBackground(.ultraThinMaterial)
+                .presentationCornerRadius(18)
         }
     }
 
@@ -49,6 +52,7 @@ struct HistoryView: View {
                     en: "Your processed videos will appear here with their real output details."
                 )
             )
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -57,6 +61,7 @@ struct HistoryView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(preferences.text(ar: "شغلك كله بمكان واحد", en: "Your processed library"))
                     .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
                 Text(
                     preferences.text(
                         ar: "محفوظ محليًا ويرجع لك حتى بعد ما تسكر التطبيق.",
@@ -71,10 +76,14 @@ struct HistoryView: View {
 
             Text("\(records.count)")
                 .font(.headline.monospacedDigit().weight(.bold))
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(IrfaaliTheme.accent.opacity(0.10), in: Capsule())
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(.white.opacity(0.16), lineWidth: 0.5)
+                }
         }
         .padding(.bottom, 2)
     }
@@ -100,10 +109,10 @@ struct HistoryView: View {
                                 .offset(x: record.outputExists ? 1 : 0)
                         }
                         .frame(width: 84, height: 84)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(.white.opacity(0.10), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(.white.opacity(0.16), lineWidth: 0.5)
                         }
                     }
                     .buttonStyle(.plain)
@@ -112,6 +121,7 @@ struct HistoryView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(record.sourceFileName)
                             .font(.headline.weight(.bold))
+                            .foregroundStyle(.white)
                             .lineLimit(1)
 
                         Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
@@ -120,7 +130,7 @@ struct HistoryView: View {
 
                         Text(preferences.text(ar: "فيديو مُصدّر", en: "Exported video"))
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(IrfaaliTheme.accent)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
 
@@ -160,7 +170,7 @@ struct HistoryView: View {
                         systemImage: record.outputExists ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
                     )
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(record.outputExists ? IrfaaliTheme.accent : .orange)
+                    .foregroundStyle(record.outputExists ? Color.secondary : .orange)
 
                     Spacer()
 
@@ -177,11 +187,16 @@ struct HistoryView: View {
     private func metadataChip(icon: String, text: String) -> some View {
         Label(text, systemImage: icon)
             .font(.caption2.weight(.semibold))
+            .foregroundStyle(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
             .padding(.horizontal, 9)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(.white.opacity(0.14), lineWidth: 0.5)
+            }
     }
 
     private func formattedFileSize(_ record: ProcessedVideoRecord) -> String {
@@ -214,6 +229,7 @@ private struct VideoPreviewSheet: View {
     var body: some View {
         NavigationStack {
             VideoCanvas(url: record.outputURL, enhancement: .off)
+                .foregroundStyle(.white)
                 .navigationTitle(record.sourceFileName)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

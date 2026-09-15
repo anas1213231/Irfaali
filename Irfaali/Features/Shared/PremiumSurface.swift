@@ -11,20 +11,21 @@ struct PremiumSurface<Content: View>: View {
     var body: some View {
         content
             .padding(17)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(borderColor, lineWidth: 0.8)
+                    .stroke(.white.opacity(0.18), lineWidth: 0.5)
             }
-            .shadow(color: shadowColor, radius: 5, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
     }
 
     private var borderColor: Color {
-        colorScheme == .dark ? .white.opacity(0.095) : .black.opacity(0.065)
+        .white.opacity(0.18)
     }
 
     private var shadowColor: Color {
-        colorScheme == .dark ? .black.opacity(0.22) : .black.opacity(0.07)
+        .black.opacity(0.28)
     }
 }
 
@@ -39,25 +40,27 @@ struct MetricTile: View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: icon)
                 .font(.headline.weight(.semibold))
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(.white)
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.system(.body, design: .default, weight: .semibold))
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(tileFill, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(colorScheme == .dark ? .white.opacity(0.055) : .black.opacity(0.05), lineWidth: 0.7)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.14), lineWidth: 0.5)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var tileFill: Color {
-        colorScheme == .dark ? .white.opacity(0.052) : .white.opacity(0.68)
+        .clear
     }
 }

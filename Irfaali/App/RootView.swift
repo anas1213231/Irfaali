@@ -54,9 +54,12 @@ struct RootView: View {
             }
             .tag(Tab.settings)
         }
+        .foregroundStyle(.white)
         .tint(IrfaaliTheme.accent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .animation(
             preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil,
             value: selectedTab
