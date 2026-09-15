@@ -25,6 +25,9 @@ targets:
         excludes:
           - Resources/AppIconSource.jpg
           - Resources/AppIconSource.b64
+          - Resources/IrfaaliSplash.mp4
+      - path: Irfaali/Resources/IrfaaliSplash.mp4
+        buildPhase: resources
     info:
       path: Irfaali/Resources/Info.plist
       properties:
