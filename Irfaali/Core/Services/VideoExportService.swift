@@ -101,11 +101,45 @@ final class VideoExportService {
         try Task.checkCancellation()
 
         let destination = try uniqueDestination(extension: "mp4")
-        try await VideoEncodingService.encode(
-            asset: exportAsset, composition: videoComposition, size: targetSize,
-            fps: outputFPS, hevc: resolvedCodec(settings: settings, info: info) == .hevc,
-            bitrate: info.estimatedBitrate, destination: destination, progress: progress
-        )
+        let useHEVC = resolvedCodec(settings: settings, info: info) == .hevc
+
+        do {
+            guard let videoComposition else {
+                throw ExportError.failed("Missing video composition for encoded output.")
+            }
+
+            // Primary production path: AVAssetExportSession + AVMutableVideoComposition.
+            // The composition applies the exact requested render size and cadence,
+            // while the HEVC preset provides Apple's highest-quality H.265 output.
+            try await AVAssetExportEngine.export(
+                asset: exportAsset,
+                videoComposition: videoComposition,
+                targetSize: targetSize,
+                fps: outputFPS,
+                useHEVC: useHEVC,
+                destination: destination,
+                progress: progress
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Some simulator/device + size/codec combinations reject an export
+            // preset even though the hardware encoder itself supports the job.
+            // Keep the existing explicit reader/writer engine as a compatibility
+            // fallback so 4K/high-FPS requests remain real rather than silently
+            // downscaling or changing cadence.
+            try? FileManager.default.removeItem(at: destination)
+            try await VideoEncodingService.encode(
+                asset: exportAsset,
+                composition: videoComposition,
+                size: targetSize,
+                fps: outputFPS,
+                hevc: useHEVC,
+                bitrate: info.estimatedBitrate,
+                destination: destination,
+                progress: progress
+            )
+        }
 
         let fpsMode: FPSGenerationMode = outputFPS < info.sourceFPS - 0.5 ? .retimed : .preserved
         return ExportOutcome(
