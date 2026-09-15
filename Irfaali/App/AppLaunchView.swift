@@ -1,103 +1,180 @@
+import AVFoundation
+import Combine
 import SwiftUI
+import UIKit
 
 struct AppLaunchView: View {
-    @EnvironmentObject private var preferences: AppPreferences
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isReady = false
-    @State private var hasStarted = false
-    @State private var logoIsVisible = false
-    @State private var copyIsVisible = false
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var splashPlayback = SplashPlaybackController()
+    @State private var didStartSplash = false
+    @State private var hasCompletedSplash = false
 
     var body: some View {
-        ZStack {
-            if isReady {
-                RootView()
-                    .transition(.opacity)
-            } else {
-                launchScreen
-                    .transition(.opacity)
-            }
-        }
-        .task {
-            guard !hasStarted else { return }
-            hasStarted = true
-            await completeLaunch()
-        }
-    }
-
-    private var launchScreen: some View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
 
-            RadialGradient(
-                colors: [
-                    IrfaaliVisual.coolBlue.opacity(0.08),
-                    IrfaaliVisual.deepViolet.opacity(0.02),
-                    .clear
-                ],
-                center: .center,
-                startRadius: 0,
-                endRadius: 320
-            )
-            .ignoresSafeArea()
+            RootView()
+                .opacity(hasCompletedSplash ? 1 : 0)
+                .allowsHitTesting(hasCompletedSplash)
 
-            VStack(spacing: 18) {
-                Image("OfficialLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 148, height: 148)
-                    .scaleEffect(logoIsVisible ? 1 : 0.985)
-                    .opacity(logoIsVisible ? 1 : 0)
-                    .accessibilityLabel(AppBranding.appName)
+            if !hasCompletedSplash {
+                SplashVideoView(player: splashPlayback.player)
+                    .transition(.opacity)
+                    .onReceive(
+                        NotificationCenter.default
+                            .publisher(for: .AVPlayerItemDidPlayToEndTime)
+                            .receive(on: RunLoop.main)
+                    ) { notification in
+                        guard
+                            let expectedItem = splashPlayback.item,
+                            let endedItem = notification.object as? AVPlayerItem,
+                            endedItem === expectedItem
+                        else {
+                            return
+                        }
 
-                VStack(spacing: 5) {
-                    Text(AppBranding.appName)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
-
-                    Text(preferences.text(ar: "كل لقطة. بشكل أفضل.", en: "Every frame. Refined."))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .opacity(copyIsVisible ? 1 : 0)
-                .offset(y: copyIsVisible ? 0 : 5)
+                        completeSplash()
+                    }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .accessibilityElement(children: .combine)
+        .background(Color.black)
+        .onAppear {
+            startSplashIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard didStartSplash, !hasCompletedSplash else { return }
+
+            switch newPhase {
+            case .active:
+                splashPlayback.resume()
+            case .inactive, .background:
+                splashPlayback.pause()
+            @unknown default:
+                break
+            }
+        }
     }
 
-    private func completeLaunch() async {
-        let animated = preferences.animationsEnabled && !reduceMotion
+    private func startSplashIfNeeded() {
+        guard !didStartSplash else { return }
+        didStartSplash = true
 
-        if animated {
-            withAnimation(.easeOut(duration: 0.22)) {
-                logoIsVisible = true
-            }
-
-            do { try await Task.sleep(for: .milliseconds(90)) } catch { return }
-
-            withAnimation(.easeOut(duration: 0.18)) {
-                copyIsVisible = true
-            }
-        } else {
-            logoIsVisible = true
-            copyIsVisible = true
-        }
-
-        do {
-            try await Task.sleep(for: animated ? .milliseconds(360) : .milliseconds(180))
-        } catch {
+        guard splashPlayback.isPrepared else {
+            hasCompletedSplash = true
             return
         }
 
-        if animated {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isReady = true
-            }
-        } else {
-            isReady = true
+        splashPlayback.playFromBeginning()
+    }
+
+    private func completeSplash() {
+        guard !hasCompletedSplash else { return }
+
+        withAnimation(
+            .easeInOut(duration: 0.18),
+            completionCriteria: .logicallyComplete
+        ) {
+            hasCompletedSplash = true
+        } completion: {
+            splashPlayback.releaseResources()
         }
+    }
+}
+
+private struct SplashVideoView: UIViewRepresentable {
+    let player: AVPlayer?
+
+    func makeUIView(context: Context) -> SplashPlayerView {
+        let view = SplashPlayerView()
+        view.playerLayer.player = player
+        return view
+    }
+
+    func updateUIView(_ uiView: SplashPlayerView, context: Context) {
+        uiView.playerLayer.player = player
+    }
+}
+
+private final class SplashPlayerView: UIView {
+    override static var layerClass: AnyClass {
+        AVPlayerLayer.self
+    }
+
+    var playerLayer: AVPlayerLayer {
+        layer as! AVPlayerLayer
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        configure()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+    }
+
+    private func configure() {
+        let launchBlack = UIColor(red: 0.004, green: 0.007, blue: 0.014, alpha: 1)
+        backgroundColor = launchBlack
+        isUserInteractionEnabled = false
+        playerLayer.backgroundColor = launchBlack.cgColor
+        playerLayer.videoGravity = .resizeAspect
+    }
+}
+
+@MainActor
+private final class SplashPlaybackController: ObservableObject {
+    private(set) var player: AVPlayer?
+    private(set) var item: AVPlayerItem?
+
+    var isPrepared: Bool {
+        player != nil && item != nil
+    }
+
+    init(bundle: Bundle = .main) {
+        guard let url = Self.splashURL(in: bundle) else { return }
+
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
+        player.isMuted = true
+        player.volume = 0
+        player.actionAtItemEnd = .pause
+        player.automaticallyWaitsToMinimizeStalling = false
+
+        self.item = item
+        self.player = player
+    }
+
+    func playFromBeginning() {
+        guard let player else { return }
+        player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
+        player.playImmediately(atRate: 1)
+    }
+
+    func resume() {
+        guard let player, player.timeControlStatus != .playing else { return }
+        player.playImmediately(atRate: 1)
+    }
+
+    func pause() {
+        player?.pause()
+    }
+
+    func releaseResources() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+        item = nil
+    }
+
+    private static func splashURL(in bundle: Bundle) -> URL? {
+        bundle.url(forResource: "IrfaaliSplash", withExtension: "mp4")
+            ?? bundle.url(
+                forResource: "IrfaaliSplash",
+                withExtension: "mp4",
+                subdirectory: "Media"
+            )
     }
 }
