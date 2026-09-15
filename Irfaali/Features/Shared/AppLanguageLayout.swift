@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// Keep SwiftUI and native navigation chrome in the same language direction.
+// Keep SwiftUI and native UIKit chrome in the same language direction.
 struct AppLanguageLayout: ViewModifier {
     @EnvironmentObject private var preferences: AppPreferences
 
@@ -43,24 +43,23 @@ struct NativeLanguageDirection: UIViewRepresentable {
         func scheduleUpdate() {
             DispatchQueue.main.async { [weak self] in
                 guard let self, let window = self.window else { return }
-                let attribute: UISemanticContentAttribute = self.isArabic ? .forceRightToLeft : .forceLeftToRight
 
-                // Apply the selected app language to this app window and its hosting hierarchy.
-                // Updating only UINavigationBar/UITabBar can leave the English interface inheriting
-                // a stale RTL direction after switching from Arabic.
+                let attribute: UISemanticContentAttribute = self.isArabic
+                    ? .forceRightToLeft
+                    : .forceLeftToRight
+
+                // The selected in-app language owns the direction of the whole app window.
+                // This prevents English from inheriting stale RTL semantics after a live
+                // Arabic -> English switch, including native navigation, tabs and sheets.
                 window.semanticContentAttribute = attribute
                 window.setNeedsLayout()
+                window.layoutIfNeeded()
 
                 self.semanticContentAttribute = attribute
 
-                var responder: UIResponder? = self
-                while let current = responder, !(current is UIViewController) {
-                    responder = current.next
+                if let root = window.rootViewController {
+                    self.updateControllerHierarchy(root, attribute: attribute)
                 }
-                guard var controller = responder as? UIViewController else { return }
-                while let parent = controller.parent { controller = parent }
-
-                self.updateControllerHierarchy(controller, attribute: attribute)
             }
         }
 
@@ -85,6 +84,10 @@ struct NativeLanguageDirection: UIViewRepresentable {
 
             for child in controller.children {
                 updateControllerHierarchy(child, attribute: attribute)
+            }
+
+            if let presented = controller.presentedViewController {
+                updateControllerHierarchy(presented, attribute: attribute)
             }
         }
     }
