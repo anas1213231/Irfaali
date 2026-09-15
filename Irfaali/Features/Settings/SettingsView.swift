@@ -191,7 +191,11 @@ struct SettingsView: View {
                     Spacer()
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(selected ? IrfaaliVisual.electricCyan : .tertiary)
+                        .foregroundStyle(
+                            selected
+                                ? IrfaaliVisual.electricCyan
+                                : Color.white.opacity(0.28)
+                        )
                 }
 
                 Text(preferences.appearanceName(appearance))
