@@ -89,7 +89,6 @@ enum AVAssetExportEngine {
         session.videoComposition = videoComposition
         session.shouldOptimizeForNetworkUse = true
         session.canPerformMultiplePassesOverSourceMediaData = true
-        session.allowsParallelizedExport = true
 
         progress(0)
 
