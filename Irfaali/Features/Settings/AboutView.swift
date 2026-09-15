@@ -35,7 +35,7 @@ struct AboutView: View {
                 VStack(spacing: 6) {
                     Text(AppBranding.appName)
                         .font(IrfaaliTheme.titleFont(32))
-                    Text(preferences.text(ar: "معالجة فيديو موثوقة", en: "Verified video processing"))
+                    Text(preferences.text(ar: "معالجة فيديو موثوقة", en: "Reliable video processing"))
                         .font(.subheadline.weight(.semibold))
                         .tracking(0.3)
                         .foregroundStyle(IrfaaliTheme.silver)
@@ -50,11 +50,11 @@ struct AboutView: View {
         PremiumSurface {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 10) {
-                    Image(systemName: "crown.fill")
+                    Image(systemName: "crown")
                         .foregroundStyle(IrfaaliTheme.accent)
-                    Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER"))
+                    Text(preferences.text(ar: "حقوق ارفعلي", en: "Ownership"))
                         .font(.caption2.bold())
-                        .tracking(preferences.isArabic ? 0.2 : 1.8)
+                        .tracking(preferences.isArabic ? 0.2 : 1.2)
                         .foregroundStyle(IrfaaliTheme.silver)
                 }
 
@@ -70,9 +70,8 @@ struct AboutView: View {
                 Link(destination: AppBranding.telegramURL) {
                     HStack(spacing: 12) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(IrfaaliTheme.accent.opacity(0.12))
-                            Image(systemName: "paperplane.fill")
+                            ObsidianGlass(cornerRadius: 14)
+                            Image(systemName: "paperplane")
                                 .foregroundStyle(IrfaaliTheme.accent)
                         }
                         .frame(width: 44, height: 44)
@@ -94,7 +93,7 @@ struct AboutView: View {
                 }
                 .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
 
-                Divider().opacity(0.25)
+                Divider().opacity(0.20)
 
                 Text(AppBranding.copyright)
                     .font(.caption)
@@ -106,7 +105,7 @@ struct AboutView: View {
     private var productCard: some View {
         PremiumSurface {
             HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "checkmark.shield.fill")
+                Image(systemName: "checkmark.shield")
                     .font(.title2)
                     .foregroundStyle(IrfaaliTheme.accent)
                 VStack(alignment: .leading, spacing: 5) {
