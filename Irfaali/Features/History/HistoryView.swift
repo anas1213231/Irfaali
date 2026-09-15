@@ -29,12 +29,12 @@ struct HistoryView: View {
                 }
             }
         }
-        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: existing links, menus and buttons
+        .buttonStyle(PremiumInteractiveButtonStyle())
         .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "My videos"))
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
-                .presentationBackground(.ultraThinMaterial) // UI-UPGRADE: native frosted sheet
+                .presentationBackground(.ultraThinMaterial)
                 .presentationCornerRadius(28)
                 .overlay(RoundedRectangle(cornerRadius: 28).strokeBorder(.white.opacity(0.20), lineWidth: 0.5).allowsHitTesting(false))
         }
@@ -42,10 +42,16 @@ struct HistoryView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(
-                preferences.text(ar: "المكان فاضي للحين 👀", en: "No processed videos yet"),
-                systemImage: "play.rectangle.on.rectangle.fill"
-            )
+            VStack(spacing: 12) {
+                Image(systemName: "play.rectangle.on.rectangle")
+                    .font(.system(size: 34, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(IrfaaliTheme.silver)
+
+                Text(preferences.text(ar: "المكان فاضي للحين 👀", en: "No processed videos yet"))
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(IrfaaliTheme.primaryText)
+            }
         } description: {
             Text(
                 preferences.text(
@@ -53,7 +59,11 @@ struct HistoryView: View {
                     en: "Your processed videos will appear here with their output details."
                 )
             )
+            .font(.subheadline)
+            .foregroundStyle(IrfaaliTheme.silver)
+            .multilineTextAlignment(.center)
         }
+        .padding(.horizontal, 28)
     }
 
     private var libraryHeader: some View {
@@ -116,7 +126,7 @@ struct HistoryView: View {
                                 .strokeBorder(.white.opacity(0.22), lineWidth: 0.5)
                         }
                     }
-                    .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
+                    .buttonStyle(PremiumInteractiveButtonStyle())
                     .disabled(!record.outputExists)
 
                     VStack(alignment: .leading, spacing: 5) {
@@ -129,8 +139,8 @@ struct HistoryView: View {
                             .foregroundStyle(IrfaaliTheme.silver)
 
                         Text(preferences.text(ar: "فيديو مُصدّر", en: "Exported video"))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(IrfaaliTheme.accent)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(IrfaaliTheme.silver)
                             .lineLimit(1)
                     }
 
@@ -167,10 +177,10 @@ struct HistoryView: View {
                         record.outputExists
                             ? preferences.text(ar: "جاهز عندك", en: "Ready")
                             : preferences.text(ar: "الملف مو موجود بالجهاز", en: "File missing from device"),
-                        systemImage: record.outputExists ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+                        systemImage: record.outputExists ? "checkmark.seal" : "exclamationmark.triangle.fill"
                     )
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(record.outputExists ? IrfaaliTheme.accent : .orange)
+                    .foregroundStyle(record.outputExists ? IrfaaliTheme.silver : .orange)
 
                     Spacer()
 
