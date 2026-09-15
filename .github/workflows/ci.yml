@@ -2,7 +2,7 @@ name: iOS CI
 
 on:
   push:
-    branches: [main, "feature/**", "build/**"]
+    branches: [main, "feature/**", "build/**", "integration/**"]
   pull_request:
 
 concurrency:
@@ -16,6 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify splash source asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPLASH="Irfaali/Resources/IrfaaliSplash.mp4"
+          test -f "$SPLASH"
+          SOURCE_SHA=$(shasum -a 256 "$SPLASH" | awk '{print $1}')
+          echo "SPLASH_SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
+          echo "Splash repository SHA-256: $SOURCE_SHA"
+
       - name: Select Xcode 26.6
         run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
 
@@ -28,6 +38,7 @@ jobs:
       - name: Generate project
         run: |
           xcodegen generate
+          grep -q "IrfaaliSplash.mp4" Irfaali.xcodeproj/project.pbxproj
           python3 - <<'PY'
           import plistlib
           with open("Irfaali/Resources/Info.plist", "rb") as stream:
@@ -88,8 +99,19 @@ jobs:
             -sdk iphonesimulator \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             -destination-timeout 120 \
+            -derivedDataPath "$RUNNER_TEMP/IrfaaliSimulatorBuild" \
             CODE_SIGNING_ALLOWED=NO \
             clean build
+
+      - name: Verify splash inside simulator app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLED="$RUNNER_TEMP/IrfaaliSimulatorBuild/Build/Products/Debug-iphonesimulator/Irfaali.app/IrfaaliSplash.mp4"
+          test -f "$BUNDLED"
+          BUNDLE_SHA=$(shasum -a 256 "$BUNDLED" | awk '{print $1}')
+          echo "Splash simulator .app SHA-256: $BUNDLE_SHA"
+          test "$SPLASH_SOURCE_SHA" = "$BUNDLE_SHA"
 
       - name: Run unit tests
         run: |
@@ -126,6 +148,17 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             build
 
+      - name: Verify splash inside Release app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLED="$RUNNER_TEMP/IrfaaliDeviceBuild/Build/Products/Release-iphoneos/Irfaali.app/IrfaaliSplash.mp4"
+          test -f "$BUNDLED"
+          RELEASE_BUNDLE_SHA=$(shasum -a 256 "$BUNDLED" | awk '{print $1}')
+          echo "SPLASH_RELEASE_BUNDLE_SHA=$RELEASE_BUNDLE_SHA" >> "$GITHUB_ENV"
+          echo "Splash Release .app SHA-256: $RELEASE_BUNDLE_SHA"
+          test "$SPLASH_SOURCE_SHA" = "$RELEASE_BUNDLE_SHA"
+
       - name: Package production IPA
         run: |
           set -euo pipefail
@@ -143,7 +176,12 @@ jobs:
           cd "$PACKAGE"
           /usr/bin/zip -qry Irfaali-1.1.ipa Payload
           unzip -t Irfaali-1.1.ipa
-          printf '%s\n' "Commit: $GITHUB_SHA" "Unsigned production Release build. Apply the owner's Apple signing before installation." > BUILD-INFO.txt
+          printf '%s\n' \
+            "Commit: $GITHUB_SHA" \
+            "Splash repository SHA-256: $SPLASH_SOURCE_SHA" \
+            "Splash Release .app SHA-256: $SPLASH_RELEASE_BUNDLE_SHA" \
+            "Unsigned production Release build. Apply the owner's Apple signing before installation." \
+            > BUILD-INFO.txt
           shasum -a 256 Irfaali-1.1.ipa >> BUILD-INFO.txt
 
       - name: Upload production IPA
