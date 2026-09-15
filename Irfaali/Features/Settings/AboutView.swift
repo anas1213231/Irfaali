@@ -97,7 +97,7 @@ struct AboutView: View {
                     .contentShape(Rectangle())
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(VIPPlainButtonStyle())
 
                 Divider().opacity(0.25)
 

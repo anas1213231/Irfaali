@@ -115,7 +115,7 @@ struct HistoryView: View {
                                 .stroke(.white.opacity(0.16), lineWidth: 0.5)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(VIPPlainButtonStyle())
                     .disabled(!record.outputExists)
 
                     VStack(alignment: .leading, spacing: 5) {

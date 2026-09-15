@@ -24,6 +24,11 @@ struct RootView: View {
                         }
                     }
             }
+            .opacity(selectedTab == .studio ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
                     preferences.text(ar: "التعديل", en: "Studio"),
@@ -35,6 +40,11 @@ struct RootView: View {
             NavigationStack {
                 HistoryView()
             }
+            .opacity(selectedTab == .videos ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
                     preferences.text(ar: "فيديوهاتي", en: "Videos"),
@@ -46,6 +56,11 @@ struct RootView: View {
             NavigationStack {
                 SettingsView()
             }
+            .opacity(selectedTab == .settings ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
                     preferences.text(ar: "الإعدادات", en: "Settings"),
@@ -56,12 +71,13 @@ struct RootView: View {
         }
         .foregroundStyle(.white)
         .tint(IrfaaliTheme.accent)
+        .buttonStyle(VIPPlainButtonStyle())
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .animation(
-            preferences.animationsEnabled ? .easeInOut(duration: 0.22) : nil,
+            preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
             value: selectedTab
         )
         .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in

@@ -15,6 +15,9 @@ struct SettingsView: View {
                     settingLabel(icon: "character.bubble.fill", ar: "لغة التطبيق", en: "App language")
                 }
                 .pickerStyle(.menu)
+                .sensoryFeedback(.selection, trigger: preferences.language.rawValue) { oldValue, newValue in
+                    preferences.hapticsEnabled && oldValue != newValue
+                }
             } header: {
                 sectionHeader(ar: "اللغة", en: "Language")
             } footer: {
@@ -61,7 +64,7 @@ struct SettingsView: View {
                         .contentShape(Rectangle())
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(VIPPlainButtonStyle())
                 }
             } header: {
                 sectionHeader(ar: "المظهر", en: "Appearance")

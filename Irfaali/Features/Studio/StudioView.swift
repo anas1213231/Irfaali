@@ -33,7 +33,7 @@ struct StudioView: View {
 
                     if model.isAnalyzing {
                         analyzingCard
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                     }
 
                     if let info = model.info {
@@ -49,17 +49,17 @@ struct StudioView: View {
 
                     if let outcome = model.lastOutcome {
                         successCard(outcome)
-                            .transition(.scale(scale: 0.98).combined(with: .opacity))
+                            .transition(.opacity)
                     }
 
                     if let message = model.validationMessage {
                         statusCard(message, icon: "exclamationmark.triangle.fill", color: .orange)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                     }
 
                     if let message = model.errorMessage {
                         statusCard(message, icon: "exclamationmark.octagon.fill", color: .red)
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -79,15 +79,16 @@ struct StudioView: View {
                     PhotosPicker(selection: $photoItem, matching: .videos) {
                         Image(systemName: "arrow.triangle.2.circlepath")
                     }
+                    .buttonStyle(VIPPlainButtonStyle())
                     .accessibilityLabel(preferences.text(ar: "تغيير الفيديو", en: "Change video"))
                     .disabled(model.isProcessing || model.isAnalyzing)
                 }
             }
         }
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.info?.url)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isAnalyzing)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.isProcessing)
-        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.22) : nil, value: model.lastOutcome?.url)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.info?.url)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.isAnalyzing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.isProcessing)
+        .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.15) : nil, value: model.lastOutcome?.url)
         .sensoryFeedback(.success, trigger: model.lastOutcome?.url) { _, _ in
             preferences.hapticsEnabled
         }
@@ -187,7 +188,7 @@ struct StudioView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: 40)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(VIPPlainButtonStyle())
             .foregroundStyle(.secondary)
         }
         .disabled(model.isAnalyzing || model.isProcessing)
@@ -206,6 +207,7 @@ struct StudioView: View {
                         Text(preferences.text(ar: previewExport ? "عرض التعديل" : "عرض الملف الناتج", en: previewExport ? "Show adjustments" : "Show export"))
                             .font(.caption.weight(.semibold))
                     }
+                    .buttonStyle(VIPPlainButtonStyle())
                 }
             }
             Group {
@@ -248,6 +250,9 @@ struct StudioView: View {
                     Text(preferences.text(ar: "التعديل", en: "Adjusted")).tag(false)
                 }
                 .pickerStyle(.segmented)
+                .sensoryFeedback(.selection, trigger: showOriginal) { oldValue, newValue in
+                    preferences.hapticsEnabled && oldValue != newValue
+                }
                 Text(preferences.text(ar: "معاينة الألوان والتفاصيل مباشرة. الدقة والفريمات تُطبّق عند التصدير.", en: "Live color and detail preview. Resolution and frame rate are applied on export."))
                     .font(.caption2).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -283,7 +288,7 @@ struct StudioView: View {
                                         .stroke(.white.opacity(model.enhancement.mode == mode ? 0.22 : 0.10), lineWidth: 0.5)
                                 }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(VIPPlainButtonStyle())
                     }
                 }
             }
@@ -629,6 +634,9 @@ struct StudioView: View {
         }
         .buttonStyle(.plain)
         .disabled(model.isProcessing)
+        .sensoryFeedback(.selection, trigger: value) { oldValue, newValue in
+            preferences.hapticsEnabled && oldValue != newValue
+        }
     }
 
     private var enhancementControls: some View {
@@ -684,6 +692,9 @@ struct StudioView: View {
             )
             .tint(IrfaaliTheme.activeAccent)
             .disabled(model.isProcessing)
+            .sensoryFeedback(.selection, trigger: Int((value * 100).rounded())) { oldValue, newValue in
+                preferences.hapticsEnabled && oldValue != newValue
+            }
         }
     }
 
@@ -1018,6 +1029,7 @@ private struct ComparisonColumn: View {
 
 private struct PremiumPrimaryButtonStyle: ButtonStyle {
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1031,13 +1043,24 @@ private struct PremiumPrimaryButtonStyle: ButtonStyle {
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(.white)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
-            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
+            .animation(
+                preferences.animationsEnabled && !reduceMotion
+                    ? (configuration.isPressed
+                        ? .linear(duration: 0.035)
+                        : .spring(response: 0.18, dampingFraction: 0.84))
+                    : nil,
+                value: configuration.isPressed
+            )
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { oldValue, newValue in
+                preferences.hapticsEnabled && !oldValue && newValue
+            }
     }
 }
 
 private struct PremiumProcessButtonStyle: ButtonStyle {
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1055,14 +1078,25 @@ private struct PremiumProcessButtonStyle: ButtonStyle {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(.white)
             .shadow(color: IrfaaliTheme.activeAccent.opacity(0.18), radius: 12, y: 5)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
-            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
+            .animation(
+                preferences.animationsEnabled && !reduceMotion
+                    ? (configuration.isPressed
+                        ? .linear(duration: 0.035)
+                        : .spring(response: 0.18, dampingFraction: 0.84))
+                    : nil,
+                value: configuration.isPressed
+            )
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { oldValue, newValue in
+                preferences.hapticsEnabled && !oldValue && newValue
+            }
     }
 }
 
 private struct PremiumSecondaryButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1076,12 +1110,24 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(.white)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
+            .animation(
+                preferences.animationsEnabled && !reduceMotion
+                    ? (configuration.isPressed
+                        ? .linear(duration: 0.035)
+                        : .spring(response: 0.18, dampingFraction: 0.84))
+                    : nil,
+                value: configuration.isPressed
+            )
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { oldValue, newValue in
+                preferences.hapticsEnabled && !oldValue && newValue
+            }
     }
 }
 
 private struct PremiumDestructiveButtonStyle: ButtonStyle {
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1095,7 +1141,17 @@ private struct PremiumDestructiveButtonStyle: ButtonStyle {
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .foregroundStyle(.red)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled ? 0.98 : 1)
-            .animation(.easeOut(duration: preferences.animationsEnabled ? 0.14 : 0), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
+            .animation(
+                preferences.animationsEnabled && !reduceMotion
+                    ? (configuration.isPressed
+                        ? .linear(duration: 0.035)
+                        : .spring(response: 0.18, dampingFraction: 0.84))
+                    : nil,
+                value: configuration.isPressed
+            )
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { oldValue, newValue in
+                preferences.hapticsEnabled && !oldValue && newValue
+            }
     }
 }
