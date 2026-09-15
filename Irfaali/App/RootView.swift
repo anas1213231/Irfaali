@@ -23,7 +23,7 @@ struct RootView: View {
             .tabItem {
                 Label(
                     preferences.text(ar: "تعديل", en: "Edit"),
-                    systemImage: "slider.horizontal.3"
+                    systemImage: "viewfinder"
                 )
             }
             .tag(Tab.studio)
@@ -39,7 +39,7 @@ struct RootView: View {
             .tabItem {
                 Label(
                     preferences.text(ar: "فيديوهاتي", en: "My Videos"),
-                    systemImage: "play.rectangle.on.rectangle"
+                    systemImage: "rectangle.stack"
                 )
             }
             .tag(Tab.videos)
@@ -63,7 +63,7 @@ struct RootView: View {
         .foregroundStyle(.white)
         .tint(IrfaaliVisual.electricCyan)
         .buttonStyle(VIPPlainButtonStyle())
-        .toolbarBackground(Color.black.opacity(0.96), for: .tabBar)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
