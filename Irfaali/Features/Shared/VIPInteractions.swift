@@ -8,14 +8,12 @@ struct VIPPlainButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(
                 configuration.isPressed && preferences.animationsEnabled && !reduceMotion
-                    ? 0.97
+                    ? 0.98
                     : 1
             )
             .animation(
                 preferences.animationsEnabled && !reduceMotion
-                    ? (configuration.isPressed
-                        ? .linear(duration: 0.035)
-                        : .spring(response: 0.18, dampingFraction: 0.84))
+                    ? .easeInOut(duration: 0.10)
                     : nil,
                 value: configuration.isPressed
             )

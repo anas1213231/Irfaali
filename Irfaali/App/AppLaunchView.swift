@@ -1,18 +1,12 @@
 import SwiftUI
 
-/// A short, deterministic hand-off from the iOS launch screen to the app.
-///
-/// The launch artwork is deliberately complete: it is never clipped or
-/// recoloured. A restrained fade and settle reveals the logo, followed by the
-/// wordmark, with a minimum presentation time so it remains visible when Reduce
-/// Motion is enabled.
 struct AppLaunchView: View {
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isReady = false
     @State private var hasStarted = false
     @State private var logoIsVisible = false
-    @State private var wordmarkIsVisible = false
+    @State private var copyIsVisible = false
 
     var body: some View {
         ZStack {
@@ -33,31 +27,41 @@ struct AppLaunchView: View {
 
     private var launchScreen: some View {
         ZStack {
-            Color("LaunchBackground")
+            Color.black
                 .ignoresSafeArea()
 
-            VStack(spacing: 20) {
-                Image("LaunchLogo")
+            RadialGradient(
+                colors: [
+                    IrfaaliVisual.coolBlue.opacity(0.08),
+                    IrfaaliVisual.deepViolet.opacity(0.02),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 0,
+                endRadius: 320
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                Image("OfficialLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 240, height: 240)
-                    .scaleEffect(logoIsVisible ? 1 : 0.96)
+                    .frame(width: 148, height: 148)
+                    .scaleEffect(logoIsVisible ? 1 : 0.985)
                     .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
 
-                VStack(spacing: 6) {
-                    Text(preferences.text(ar: "ارفعلي", en: "Irfaali"))
-                        .font(.system(size: 28, weight: .semibold, design: .default))
-                        .foregroundStyle(Color(red: 0.06, green: 0.14, blue: 0.23))
-                        .opacity(wordmarkIsVisible ? 1 : 0)
-                        .offset(y: wordmarkIsVisible ? 0 : 8)
+                VStack(spacing: 5) {
+                    Text(AppBranding.appName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
 
-                    Text(preferences.text(ar: "ارفعها. واضبطها.", en: "Upload. Refine. Done."))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color(red: 0.29, green: 0.36, blue: 0.43))
-                        .opacity(wordmarkIsVisible ? 1 : 0)
-                        .offset(y: wordmarkIsVisible ? 0 : 8)
+                    Text(preferences.text(ar: "كل لقطة. بشكل أفضل.", en: "Every frame. Refined."))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
+                .opacity(copyIsVisible ? 1 : 0)
+                .offset(y: copyIsVisible ? 0 : 5)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -65,36 +69,31 @@ struct AppLaunchView: View {
     }
 
     private func completeLaunch() async {
-        // Keep the logo on screen long enough to be seen. The movement is a
-        // single soft settle rather than a bounce or a rotation, so it feels
-        // native to iOS while still making the launch state unmistakable.
-        let minimumDuration: Duration = preferences.animationsEnabled && !reduceMotion
-            ? .milliseconds(550)
-            : .milliseconds(250)
+        let animated = preferences.animationsEnabled && !reduceMotion
 
-        if preferences.animationsEnabled && !reduceMotion {
-            withAnimation(.easeOut(duration: 0.34)) {
+        if animated {
+            withAnimation(.easeOut(duration: 0.22)) {
                 logoIsVisible = true
             }
 
-            do { try await Task.sleep(for: .milliseconds(140)) } catch { return }
+            do { try await Task.sleep(for: .milliseconds(90)) } catch { return }
 
-            withAnimation(.easeOut(duration: 0.24)) {
-                wordmarkIsVisible = true
+            withAnimation(.easeOut(duration: 0.18)) {
+                copyIsVisible = true
             }
         } else {
             logoIsVisible = true
-            wordmarkIsVisible = true
+            copyIsVisible = true
         }
 
         do {
-            try await Task.sleep(for: minimumDuration)
+            try await Task.sleep(for: animated ? .milliseconds(360) : .milliseconds(180))
         } catch {
             return
         }
 
-        if preferences.animationsEnabled && !reduceMotion {
-            withAnimation(.easeInOut(duration: 0.30)) {
+        if animated {
+            withAnimation(.easeInOut(duration: 0.15)) {
                 isReady = true
             }
         } else {

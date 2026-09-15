@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct PremiumSurface<Content: View>: View {
-    @Environment(\.colorScheme) private var colorScheme
     private let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -10,40 +9,44 @@ struct PremiumSurface<Content: View>: View {
 
     var body: some View {
         content
-            .padding(17)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.18), lineWidth: 0.5)
+            .padding(18)
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(IrfaaliVisual.quietFill)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
-    }
-
-    private var borderColor: Color {
-        .white.opacity(0.18)
-    }
-
-    private var shadowColor: Color {
-        .black.opacity(0.28)
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.14),
+                                Color.white.opacity(0.055),
+                                Color.white.opacity(0.025)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.5
+                    )
+            }
     }
 }
 
 struct MetricTile: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     let icon: String
     let title: String
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)
-                .font(.headline.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
+
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.caption)
                 .foregroundStyle(.secondary)
+
             Text(value)
                 .font(.system(.body, design: .default, weight: .semibold))
                 .foregroundStyle(.white)
@@ -51,16 +54,6 @@ struct MetricTile: View {
                 .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(.white.opacity(0.14), lineWidth: 0.5)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private var tileFill: Color {
-        .clear
+        .padding(.vertical, 4)
     }
 }

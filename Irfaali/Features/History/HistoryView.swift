@@ -1,6 +1,6 @@
-import SwiftUI
-import SwiftData
 import AVKit
+import SwiftData
+import SwiftUI
 
 struct HistoryView: View {
     @Query(sort: \ProcessedVideoRecord.createdAt, order: .reverse) private var records: [ProcessedVideoRecord]
@@ -12,191 +12,197 @@ struct HistoryView: View {
         ZStack {
             ThemeBackground()
 
-            if records.isEmpty {
-                emptyState
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 14) {
-                        libraryHeader
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    libraryHeader
+                        .padding(.bottom, records.isEmpty ? 44 : 22)
 
-                        ForEach(records) { record in
-                            videoCard(record)
+                    if records.isEmpty {
+                        emptyState
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(records) { record in
+                                videoRow(record)
+                            }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 40)
                 }
+                .padding(.horizontal, 18)
+                .padding(.top, 18)
+                .padding(.bottom, 44)
             }
+            .scrollIndicators(.hidden)
         }
         .foregroundStyle(.white)
-        .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "Videos"))
+        .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "My Videos"))
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
-                .presentationBackground(.ultraThinMaterial)
-                .presentationCornerRadius(18)
-        }
-    }
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label(
-                preferences.text(ar: "المكان فاضي للحين 👀", en: "No processed videos yet"),
-                systemImage: "play.rectangle.on.rectangle.fill"
-            )
-        } description: {
-            Text(
-                preferences.text(
-                    ar: "أول فيديو تضبطه بيطلع لك هني بكل بياناته.",
-                    en: "Your processed videos will appear here with their real output details."
-                )
-            )
-            .foregroundStyle(.secondary)
+                .presentationBackground(Color.black)
+                .presentationCornerRadius(22)
         }
     }
 
     private var libraryHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(preferences.text(ar: "شغلك كله بمكان واحد", en: "Your processed library"))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .lastTextBaseline) {
+                Text(preferences.text(ar: "شغلك.", en: "Your work."))
+                    .font(.system(size: 38, weight: .bold))
+                    .tracking(preferences.isArabic ? 0 : -1.1)
+
+                Spacer()
+
+                Text("\(records.count)")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                    .foregroundStyle(records.isEmpty ? .tertiary : IrfaaliVisual.electricCyan)
+            }
+
+            Text(
+                preferences.text(
+                    ar: "كل نتيجة جاهزة ترجع لها بسرعة.",
+                    en: "Every finished result, ready when you need it."
+                )
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 0.8)
+                    .frame(width: 74, height: 58)
+
+                Image(systemName: "play.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.78))
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text(preferences.text(ar: "أول نتيجة بتعيش هني.", en: "Your first result will live here."))
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+
                 Text(
                     preferences.text(
-                        ar: "محفوظ محليًا ويرجع لك حتى بعد ما تسكر التطبيق.",
-                        en: "Stored locally and available when you come back."
+                        ar: "عالج فيديو، وبتلقى الملف وبياناته جاهزة لك.",
+                        en: "Process a video and its final file and details will appear here."
                     )
                 )
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer()
-
-            Text("\(records.count)")
-                .font(.headline.monospacedDigit().weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(.white.opacity(0.16), lineWidth: 0.5)
-                }
         }
-        .padding(.bottom, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 20)
     }
 
-    private func videoCard(_ record: ProcessedVideoRecord) -> some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 13) {
-                    Button {
-                        guard record.outputExists else { return }
-                        playingRecord = record
-                    } label: {
-                        ZStack {
-                            VideoThumbnailView(url: record.outputURL, isAvailable: record.outputExists)
+    private func videoRow(_ record: ProcessedVideoRecord) -> some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 14) {
+                Button {
+                    guard record.outputExists else { return }
+                    playingRecord = record
+                } label: {
+                    ZStack {
+                        VideoThumbnailView(url: record.outputURL, isAvailable: record.outputExists)
 
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 38, height: 38)
+                        Color.black.opacity(record.outputExists ? 0.10 : 0.38)
 
-                            Image(systemName: record.outputExists ? "play.fill" : "exclamationmark.triangle.fill")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(record.outputExists ? .white : .orange)
-                                .offset(x: record.outputExists ? 1 : 0)
-                        }
-                        .frame(width: 84, height: 84)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(.white.opacity(0.16), lineWidth: 0.5)
-                        }
-                    }
-                    .buttonStyle(VIPPlainButtonStyle())
-                    .disabled(!record.outputExists)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(record.sourceFileName)
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-
-                        Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Text(preferences.text(ar: "فيديو مُصدّر", en: "Exported video"))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-
-                    Spacer(minLength: 4)
-
-                    Menu {
-                        if record.outputExists {
-                            ShareLink(item: record.outputURL) {
-                                Label(preferences.text(ar: "مشاركة", en: "Share"), systemImage: "square.and.arrow.up")
+                        Circle()
+                            .fill(Color.black.opacity(0.66))
+                            .frame(width: 36, height: 36)
+                            .overlay {
+                                Circle()
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
                             }
-                        }
 
-                        Button(role: .destructive) {
-                            delete(record)
-                        } label: {
-                            Label(preferences.text(ar: "حذف", en: "Delete"), systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .font(.title2)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary)
+                        Image(systemName: record.outputExists ? "play.fill" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(record.outputExists ? .white : .orange)
+                            .offset(x: record.outputExists ? 1 : 0)
+                    }
+                    .frame(width: 92, height: 92)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
                     }
                 }
+                .buttonStyle(VIPPlainButtonStyle())
+                .disabled(!record.outputExists)
 
-                HStack(spacing: 8) {
-                    metadataChip(icon: "rectangle.portrait", text: "\(record.width)×\(record.height)")
-                    metadataChip(icon: "speedometer", text: IrfaaliFormatters.fps(record.fps))
-                    metadataChip(icon: "film", text: record.codec)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(record.sourceFileName)
+                        .font(.headline.weight(.bold))
+                        .lineLimit(1)
+
+                    Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("\(record.width)×\(record.height) · \(IrfaaliFormatters.fps(record.fps))")
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.78))
+                        .lineLimit(1)
+
+                    Text(record.codec)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
 
-                HStack {
-                    Label(
-                        record.outputExists
-                            ? preferences.text(ar: "جاهز عندك", en: "Ready")
-                            : preferences.text(ar: "الملف مو موجود بالجهاز", en: "File missing from device"),
-                        systemImage: record.outputExists ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
-                    )
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(record.outputExists ? Color.secondary : .orange)
+                Spacer(minLength: 4)
 
-                    Spacer()
-
+                Menu {
                     if record.outputExists {
-                        Text(formattedFileSize(record))
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(.secondary)
+                        ShareLink(item: record.outputURL) {
+                            Label(preferences.text(ar: "مشاركة", en: "Share"), systemImage: "square.and.arrow.up")
+                        }
                     }
+
+                    Button(role: .destructive) {
+                        delete(record)
+                    } label: {
+                        Label(preferences.text(ar: "حذف", en: "Delete"), systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 40, height: 44)
+                        .contentShape(Rectangle())
                 }
             }
-        }
-    }
 
-    private func metadataChip(icon: String, text: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(.white)
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.14), lineWidth: 0.5)
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(record.outputExists ? IrfaaliVisual.electricCyan : Color.orange)
+                    .frame(width: 6, height: 6)
+
+                Text(
+                    record.outputExists
+                        ? preferences.text(ar: "جاهز", en: "Ready")
+                        : preferences.text(ar: "الملف مو موجود بالجهاز", en: "File missing from device")
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(record.outputExists ? .secondary : .orange)
+
+                Spacer()
+
+                if record.outputExists {
+                    Text(formattedFileSize(record))
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
+
+            IrfaaliHairline()
+        }
+        .padding(.vertical, 16)
     }
 
     private func formattedFileSize(_ record: ProcessedVideoRecord) -> String {
@@ -228,15 +234,19 @@ private struct VideoPreviewSheet: View {
 
     var body: some View {
         NavigationStack {
-            VideoCanvas(url: record.outputURL, enhancement: .off)
-                .foregroundStyle(.white)
-                .navigationTitle(record.sourceFileName)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(preferences.text(ar: "تم", en: "Done")) { dismiss() }
-                    }
+            ZStack {
+                Color.black.ignoresSafeArea()
+                VideoCanvas(url: record.outputURL, enhancement: .off)
+            }
+            .foregroundStyle(.white)
+            .navigationTitle(record.sourceFileName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(preferences.text(ar: "تم", en: "Done")) { dismiss() }
                 }
+            }
         }
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }

@@ -14,15 +14,6 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 StudioView()
-                    .toolbar {
-                        ToolbarItem(placement: .principal) {
-                            Image("OfficialLogo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 32)
-                                .accessibilityLabel(AppBranding.appName)
-                        }
-                    }
             }
             .opacity(selectedTab == .studio ? 1 : 0)
             .animation(
@@ -31,8 +22,8 @@ struct RootView: View {
             )
             .tabItem {
                 Label(
-                    preferences.text(ar: "التعديل", en: "Studio"),
-                    systemImage: "wand.and.stars"
+                    preferences.text(ar: "تعديل", en: "Edit"),
+                    systemImage: "slider.horizontal.3"
                 )
             }
             .tag(Tab.studio)
@@ -47,8 +38,8 @@ struct RootView: View {
             )
             .tabItem {
                 Label(
-                    preferences.text(ar: "فيديوهاتي", en: "Videos"),
-                    systemImage: "rectangle.stack.fill"
+                    preferences.text(ar: "فيديوهاتي", en: "My Videos"),
+                    systemImage: "play.rectangle.on.rectangle"
                 )
             }
             .tag(Tab.videos)
@@ -64,15 +55,15 @@ struct RootView: View {
             .tabItem {
                 Label(
                     preferences.text(ar: "الإعدادات", en: "Settings"),
-                    systemImage: "gearshape.fill"
+                    systemImage: "gearshape"
                 )
             }
             .tag(Tab.settings)
         }
         .foregroundStyle(.white)
-        .tint(IrfaaliTheme.accent)
+        .tint(IrfaaliVisual.electricCyan)
         .buttonStyle(VIPPlainButtonStyle())
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(Color.black.opacity(0.96), for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(.dark, for: .tabBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
