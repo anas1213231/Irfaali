@@ -55,7 +55,7 @@ struct HistoryView: View {
 
                 Text("\(records.count)")
                     .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(records.isEmpty ? .tertiary : IrfaaliVisual.electricCyan)
+                    .foregroundStyle(records.isEmpty ? Color.white.opacity(0.28) : IrfaaliVisual.electricCyan)
             }
 
             Text(
@@ -189,7 +189,7 @@ struct HistoryView: View {
                         : preferences.text(ar: "الملف مو موجود بالجهاز", en: "File missing from device")
                 )
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(record.outputExists ? .secondary : .orange)
+                .foregroundStyle(record.outputExists ? Color.white.opacity(0.60) : Color.orange)
 
                 Spacer()
 
