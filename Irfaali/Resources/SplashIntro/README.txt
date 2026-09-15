@@ -1,0 +1,1 @@
+Bundled brand-intro payload. The split Base64 resource chunks decode byte-for-byte to SplashIntro.mp4 at launch. Source asset SHA-256 is verified in SplashVideoView before playback.
