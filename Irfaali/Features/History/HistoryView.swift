@@ -75,10 +75,16 @@ struct HistoryView: View {
 
             Text("\(records.count)")
                 .font(.headline.monospacedDigit().weight(.bold))
-                .foregroundStyle(IrfaaliTheme.accent)
+                .foregroundStyle(IrfaaliTheme.primaryText)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(IrfaaliTheme.accent.opacity(0.10), in: Capsule())
+                .background(ObsidianGlass(cornerRadius: 30))
+                .overlay {
+                    Capsule()
+                        .stroke(IrfaaliTheme.luminousAccent, lineWidth: 0.6)
+                        .opacity(0.48)
+                }
+                .shadow(color: IrfaaliTheme.accent.opacity(0.08), radius: 8)
         }
         .padding(.bottom, 2)
     }
@@ -143,7 +149,7 @@ struct HistoryView: View {
                             Label(preferences.text(ar: "حذف", en: "Delete"), systemImage: "trash")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle.fill")
+                        Image(systemName: "ellipsis.circle")
                             .font(.title2)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(IrfaaliTheme.silver)
