@@ -10,17 +10,13 @@ struct PremiumSurface<Content: View>: View {
 
     var body: some View {
         content
-            .padding(20)
+            .padding(18)
             .background(ObsidianGlass(cornerRadius: 18)) // UI-UPGRADE
-            .shadow(color: shadowColor, radius: 12, y: 6)
-    }
-
-    private var borderColor: Color {
-        colorScheme == .dark ? .white.opacity(0.095) : .black.opacity(0.065)
+            .shadow(color: shadowColor, radius: 8, y: 4)
     }
 
     private var shadowColor: Color {
-        colorScheme == .dark ? .black.opacity(0.22) : .black.opacity(0.07)
+        colorScheme == .dark ? .black.opacity(0.18) : .black.opacity(0.055)
     }
 }
 
@@ -49,11 +45,7 @@ struct MetricTile: View {
         .background(ObsidianGlass(cornerRadius: 15))
         .overlay {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(colorScheme == .dark ? .white.opacity(0.055) : .black.opacity(0.05), lineWidth: 0.5)
+                .stroke(colorScheme == .dark ? .white.opacity(0.05) : .black.opacity(0.045), lineWidth: 0.5)
         }
-    }
-
-    private var tileFill: Color {
-        colorScheme == .dark ? .white.opacity(0.052) : .white.opacity(0.68)
     }
 }
