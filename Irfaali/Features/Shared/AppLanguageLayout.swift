@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// UI-UPGRADE: Keep SwiftUI and native navigation chrome in the same language direction.
+// Keep SwiftUI and native navigation chrome in the same language direction.
 struct AppLanguageLayout: ViewModifier {
     @EnvironmentObject private var preferences: AppPreferences
 
@@ -42,31 +42,49 @@ struct NativeLanguageDirection: UIViewRepresentable {
 
         func scheduleUpdate() {
             DispatchQueue.main.async { [weak self] in
-                guard let self, self.window != nil else { return }
+                guard let self, let window = self.window else { return }
                 let attribute: UISemanticContentAttribute = self.isArabic ? .forceRightToLeft : .forceLeftToRight
+
+                // Apply the selected app language to this app window and its hosting hierarchy.
+                // Updating only UINavigationBar/UITabBar can leave the English interface inheriting
+                // a stale RTL direction after switching from Arabic.
+                window.semanticContentAttribute = attribute
+                window.setNeedsLayout()
+
                 self.semanticContentAttribute = attribute
-                // Scope to this hosting hierarchy, not global UIKit appearance or system pickers.
+
                 var responder: UIResponder? = self
                 while let current = responder, !(current is UIViewController) {
                     responder = current.next
                 }
                 guard var controller = responder as? UIViewController else { return }
                 while let parent = controller.parent { controller = parent }
-                self.updateNavigation(controller, attribute: attribute)
+
+                self.updateControllerHierarchy(controller, attribute: attribute)
             }
         }
 
-        private func updateNavigation(_ controller: UIViewController, attribute: UISemanticContentAttribute) {
+        private func updateControllerHierarchy(
+            _ controller: UIViewController,
+            attribute: UISemanticContentAttribute
+        ) {
+            controller.view.semanticContentAttribute = attribute
+            controller.view.setNeedsLayout()
+
             if let tabs = controller as? UITabBarController {
                 tabs.tabBar.semanticContentAttribute = attribute
                 tabs.tabBar.setNeedsLayout()
             }
+
             if let navigation = controller as? UINavigationController {
                 navigation.navigationBar.semanticContentAttribute = attribute
                 navigation.navigationBar.setNeedsLayout()
+                navigation.toolbar.semanticContentAttribute = attribute
+                navigation.toolbar.setNeedsLayout()
             }
+
             for child in controller.children {
-                updateNavigation(child, attribute: attribute)
+                updateControllerHierarchy(child, attribute: attribute)
             }
         }
     }
