@@ -53,7 +53,10 @@ struct SettingsView: View {
                         }
                         .overlay(alignment: .bottom) {
                             if preferences.appearance == appearance {
-                                Rectangle().fill(IrfaaliTheme.luminousAccent.opacity(0.55)).frame(height: 0.5)
+                                Rectangle()
+                                    .fill(IrfaaliTheme.luminousAccent)
+                                    .frame(height: 0.75)
+                                    .shadow(color: IrfaaliTheme.accent.opacity(0.22), radius: 3)
                             }
                         }
                         .contentShape(Rectangle())
@@ -164,9 +167,18 @@ struct SettingsView: View {
             colors = [.white, .white]
         }
 
+        let selected = preferences.appearance == appearance
+
         return Circle()
             .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(Circle().stroke(.secondary.opacity(0.28), lineWidth: 1))
+            .overlay {
+                Circle()
+                    .strokeBorder(
+                        selected ? IrfaaliTheme.accent : Color.secondary.opacity(0.28),
+                        lineWidth: selected ? 1.5 : 1
+                    )
+            }
+            .shadow(color: selected ? IrfaaliTheme.accent.opacity(0.20) : .clear, radius: 5)
             .frame(width: 28, height: 28)
     }
 
