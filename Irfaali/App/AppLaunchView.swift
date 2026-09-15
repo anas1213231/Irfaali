@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct AppLaunchView: View {
     @State private var isSplashVisible = !SplashLaunchSession.didPlay
 
@@ -22,6 +23,7 @@ struct AppLaunchView: View {
     }
 }
 
+@MainActor
 private enum SplashLaunchSession {
     static var didPlay = false
 }
