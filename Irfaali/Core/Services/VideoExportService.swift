@@ -120,14 +120,24 @@ final class VideoExportService {
                 destination: destination,
                 progress: progress
             )
+
+            try Task.checkCancellation()
+            let exportedInfo = try await VideoAnalyzer().analyze(url: destination)
+            if let mismatch = OutputVerification.mismatch(
+                source: info,
+                output: exportedInfo,
+                settings: settings
+            ) {
+                throw ExportError.failed("AVAssetExportSession output mismatch: \(mismatch)")
+            }
+            progress(1)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             // Some simulator/device + size/codec combinations reject an export
-            // preset even though the hardware encoder itself supports the job.
-            // Keep the existing explicit reader/writer engine as a compatibility
-            // fallback so 4K/high-FPS requests remain real rather than silently
-            // downscaling or changing cadence.
+            // preset or silently constrain its dimensions/cadence. Keep the
+            // existing explicit reader/writer engine as a compatibility fallback
+            // so the final file remains truthful to the user's requested output.
             try? FileManager.default.removeItem(at: destination)
             try await VideoEncodingService.encode(
                 asset: exportAsset,
@@ -139,6 +149,17 @@ final class VideoExportService {
                 destination: destination,
                 progress: progress
             )
+
+            try Task.checkCancellation()
+            let fallbackInfo = try await VideoAnalyzer().analyze(url: destination)
+            if let mismatch = OutputVerification.mismatch(
+                source: info,
+                output: fallbackInfo,
+                settings: settings
+            ) {
+                try? FileManager.default.removeItem(at: destination)
+                throw ExportError.failed("Fallback encoder output mismatch: \(mismatch)")
+            }
         }
 
         let fpsMode: FPSGenerationMode = outputFPS < info.sourceFPS - 0.5 ? .retimed : .preserved

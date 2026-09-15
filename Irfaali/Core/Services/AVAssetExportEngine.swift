@@ -140,7 +140,9 @@ enum AVAssetExportEngine {
             }
 
             try Task.checkCancellation()
-            progress(1)
+            // Hold the final 1% until VideoExportService validates the actual
+            // encoded file's dimensions, cadence, codec and audio track.
+            progress(0.99)
         } catch {
             session.cancelExport()
             try? FileManager.default.removeItem(at: destination)
