@@ -9,10 +9,10 @@ struct PremiumPressFeedback: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(isPressed && isEnabled && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
+            .scaleEffect(isPressed && isEnabled && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
             .animation(
                 preferences.animationsEnabled && !reduceMotion
-                    ? .easeOut(duration: 0.12)
+                    ? .easeInOut(duration: 0.10)
                     : nil,
                 value: isPressed
             )
@@ -78,7 +78,6 @@ struct PremiumSliderFeedback: ViewModifier {
                     let inset: CGFloat = 14
                     let width = max(0, geometry.size.width - inset * 2)
                     let x = inset + width * (layoutDirection == .rightToLeft ? 1 - fraction : fraction)
-                    // UI-UPGRADE: Gradient accent follows the unchanged native slider value.
                     Capsule()
                         .fill(IrfaaliTheme.luminousAccent)
                         .opacity(isEnabled ? (isDragging ? 0.95 : 0.65) : 0.25)
@@ -95,7 +94,7 @@ struct PremiumSliderFeedback: ViewModifier {
                         dragging = isEnabled
                     }
             )
-            .animation(preferences.animationsEnabled && !reduceMotion ? .easeOut(duration: 0.12) : nil, value: isDragging)
+            .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil, value: isDragging)
             .sensoryFeedback(.impact(weight: .light), trigger: isDragging) { old, new in
                 !old && new && isEnabled && preferences.hapticsEnabled
             }
@@ -104,4 +103,3 @@ struct PremiumSliderFeedback: ViewModifier {
             }
     }
 }
-
