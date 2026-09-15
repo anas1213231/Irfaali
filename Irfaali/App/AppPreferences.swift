@@ -49,16 +49,17 @@ final class AppPreferences: ObservableObject {
 
         if let rawAppearance = defaults.string(forKey: Keys.appearance),
            let savedAppearance = Appearance(rawValue: rawAppearance) {
-            appearance = savedAppearance
+            appearance = (savedAppearance == .light || savedAppearance == .pureWhite) ? .light : .dark
         } else {
-            appearance = .system
+            appearance = .dark
         }
 
-        animationsEnabled = defaults.object(forKey: Keys.animationsEnabled) as? Bool ?? true
-        hapticsEnabled = defaults.object(forKey: Keys.hapticsEnabled) as? Bool ?? true
+        animationsEnabled = true
+        hapticsEnabled = true
     }
 
     var isArabic: Bool { language == .arabic }
+    var locale: Locale { Locale(identifier: isArabic ? "ar" : "en") }
 
     var layoutDirection: LayoutDirection {
         isArabic ? .rightToLeft : .leftToRight

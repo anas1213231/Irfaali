@@ -2,95 +2,102 @@ import SwiftUI
 
 struct AppLaunchView: View {
     @EnvironmentObject private var preferences: AppPreferences
-
-    @State private var showApp = false
-    @State private var logoScale: CGFloat = 0.78
-    @State private var logoOpacity = 0.0
-    @State private var titleOpacity = 0.0
-    @State private var titleOffset: CGFloat = 14
-    @State private var glowOpacity = 0.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isReady = false
+    @State private var hasStarted = false
+    @State private var logoIsVisible = false
+    @State private var copyIsVisible = false
 
     var body: some View {
         ZStack {
-            if showApp {
+            if isReady {
                 RootView()
-                    .transition(.opacity.combined(with: .scale(scale: 1.015)))
+                    .transition(.opacity)
             } else {
-                splash
+                launchScreen
                     .transition(.opacity)
             }
         }
         .task {
-            await runLaunchSequence()
+            guard !hasStarted else { return }
+            hasStarted = true
+            await completeLaunch()
         }
     }
 
-    private var splash: some View {
+    private var launchScreen: some View {
         ZStack {
-            LinearGradient(
+            Color.black
+                .ignoresSafeArea()
+
+            RadialGradient(
                 colors: [
-                    Color(red: 0.008, green: 0.045, blue: 0.038),
-                    Color(red: 0.01, green: 0.105, blue: 0.085),
-                    Color.black
+                    IrfaaliVisual.coolBlue.opacity(0.08),
+                    IrfaaliVisual.deepViolet.opacity(0.02),
+                    .clear
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                center: .center,
+                startRadius: 0,
+                endRadius: 320
             )
             .ignoresSafeArea()
 
-            Circle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 280, height: 280)
-                .blur(radius: 54)
-                .opacity(glowOpacity)
-
-            VStack(spacing: 22) {
+            VStack(spacing: 18) {
                 Image("OfficialLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 172, height: 172)
-                    .scaleEffect(logoScale)
-                    .opacity(logoOpacity)
+                    .frame(width: 148, height: 148)
+                    .scaleEffect(logoIsVisible ? 1 : 0.985)
+                    .opacity(logoIsVisible ? 1 : 0)
                     .accessibilityLabel(AppBranding.appName)
 
-                Text(AppBranding.appName)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .tracking(-0.7)
-                    .foregroundStyle(.white)
-                    .opacity(titleOpacity)
-                    .offset(y: titleOffset)
+                VStack(spacing: 5) {
+                    Text(AppBranding.appName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    Text(preferences.text(ar: "كل لقطة. بشكل أفضل.", en: "Every frame. Refined."))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .opacity(copyIsVisible ? 1 : 0)
+                .offset(y: copyIsVisible ? 0 : 5)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .accessibilityElement(children: .combine)
     }
 
-    private func runLaunchSequence() async {
-        guard !showApp else { return }
+    private func completeLaunch() async {
+        let animated = preferences.animationsEnabled && !reduceMotion
 
-        if preferences.animationsEnabled {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.76)) {
-                logoScale = 1
-                logoOpacity = 1
-                glowOpacity = 1
+        if animated {
+            withAnimation(.easeOut(duration: 0.22)) {
+                logoIsVisible = true
             }
 
-            try? await Task.sleep(for: .milliseconds(250))
+            do { try await Task.sleep(for: .milliseconds(90)) } catch { return }
 
-            withAnimation(.easeOut(duration: 0.42)) {
-                titleOpacity = 1
-                titleOffset = 0
-            }
-
-            try? await Task.sleep(for: .milliseconds(850))
-
-            withAnimation(.easeInOut(duration: 0.38)) {
-                showApp = true
+            withAnimation(.easeOut(duration: 0.18)) {
+                copyIsVisible = true
             }
         } else {
-            logoScale = 1
-            logoOpacity = 1
-            titleOpacity = 1
-            titleOffset = 0
-            showApp = true
+            logoIsVisible = true
+            copyIsVisible = true
+        }
+
+        do {
+            try await Task.sleep(for: animated ? .milliseconds(360) : .milliseconds(180))
+        } catch {
+            return
+        }
+
+        if animated {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isReady = true
+            }
+        } else {
+            isReady = true
         }
     }
 }

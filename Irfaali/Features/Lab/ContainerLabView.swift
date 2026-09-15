@@ -8,20 +8,20 @@ struct ContainerLabView: View {
                 VStack(spacing: 16) {
                     PremiumSurface {
                         VStack(alignment: .leading, spacing: 12) {
-                            Label("Experimental Container Lab", systemImage: "atom")
+                            Label("Container Details", systemImage: "shippingbox")
                                 .font(.title3.bold())
-                            Text("المرحلة الحالية Read‑Only عمدًا: نعرض الفرق بين native/generated/retimed/container timing بدون تعديل atoms أو تقديم FPS وهمي.")
+                            Text("عرض معلومات الحاوية ومسار الفيديو للملفات التي تمت معالجتها.")
                                 .font(.subheadline).foregroundStyle(.secondary)
                             Divider().overlay(.white.opacity(0.08))
-                            classification("Native Source FPS", "معدل الإطارات في المصدر كما يبلّغ عنه مسار الفيديو.")
-                            classification("Generated FPS", "يتطلب إنشاء إطارات فعلية بالـ duplication أو interpolation ويجب تسميته بوضوح.")
-                            classification("Container Timing Experiment", "تغيير timing metadata وحده لا يصنع frames جديدة.")
+                            classification("Source frame rate", "معدل الإطارات الذي يبلّغه مسار الفيديو الأصلي.")
+                            classification("Output frame rate", "معدل الإطارات الذي تم التحقق منه في الملف الناتج.")
+                            classification("Track timing", "توقيت مسارات الصوت والفيديو داخل الحاوية.")
                         }
                     }
                     PremiumSurface {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Safety Gate").font(.headline)
-                            Text("لن يكتب المختبر MP4/MOV atoms قبل وجود parser/validator واختبارات round‑trip. هذا يمنع فساد الملفات وادعاءات 120fps غير الحقيقية.")
+                            Text("Output integrity").font(.headline)
+                            Text("يُقبل الملف بعد قراءة خصائصه والتحقق من الأبعاد والفريمات والصوت.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }

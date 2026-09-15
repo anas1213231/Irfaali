@@ -15,18 +15,70 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
       - name: Select Xcode 26.6
         run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Prepare app icon
         run: bash scripts/prepare_app_icon.sh
+
       - name: Generate project
-        run: xcodegen generate
+        run: |
+          xcodegen generate
+          python3 - <<'PY'
+          import plistlib
+          with open("Irfaali/Resources/Info.plist", "rb") as stream:
+              info = plistlib.load(stream)
+          assert info["CFBundleShortVersionString"] == "1.1", info
+          assert info["CFBundleVersion"] == "6", info
+          PY
+
       - name: Show environment
         run: |
           xcodebuild -version
           xcodegen --version
+          xcrun simctl list runtimes
+          xcrun simctl list devicetypes | head -80
+
+      - name: Create and boot CI simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RUNTIME_ID=$(xcrun simctl list runtimes -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          runtimes = [r for r in data.get("runtimes", []) if r.get("isAvailable") and r.get("identifier", "").startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
+          if not runtimes:
+              raise SystemExit("No available iOS Simulator runtime found")
+          def version(r):
+              return tuple(int(p) if p.isdigit() else 0 for p in str(r.get("version", "0")).split("."))
+          runtimes.sort(key=version)
+          print(runtimes[-1]["identifier"])
+          ')
+
+          DEVICE_TYPE_ID=$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          devices = data.get("devicetypes", [])
+          iphones = [d for d in devices if str(d.get("name", "")).startswith("iPhone")]
+          if not iphones:
+              raise SystemExit("No iPhone simulator device type found")
+          preferred = next((d for d in iphones if d.get("name") == "iPhone 17 Pro"), None)
+          chosen = preferred or iphones[0]
+          print(chosen["identifier"])
+          ')
+
+          UDID=$(xcrun simctl create "Irfaali CI" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Created simulator: $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices "$RUNTIME_ID"
+
       - name: Build for simulator
         run: |
           set -o pipefail
@@ -34,9 +86,11 @@ jobs:
             -project Irfaali.xcodeproj \
             -scheme Irfaali \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -destination-timeout 120 \
             CODE_SIGNING_ALLOWED=NO \
             clean build
+
       - name: Run unit tests
         run: |
           set -o pipefail
@@ -44,6 +98,60 @@ jobs:
             -project Irfaali.xcodeproj \
             -scheme Irfaali \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -destination-timeout 120 \
             CODE_SIGNING_ALLOWED=NO \
             test
+
+      - name: Shutdown CI simulator
+        if: always()
+        run: |
+          if [ -n "${SIMULATOR_UDID:-}" ]; then
+            xcrun simctl shutdown "$SIMULATOR_UDID" || true
+            xcrun simctl delete "$SIMULATOR_UDID" || true
+          fi
+
+      - name: Build production Release for iPhone
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Irfaali.xcodeproj \
+            -scheme Irfaali \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/IrfaaliDeviceBuild" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+
+      - name: Package production IPA
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/IrfaaliDeviceBuild/Build/Products/Release-iphoneos/Irfaali.app"
+          PACKAGE="$RUNNER_TEMP/IrfaaliDevicePackage"
+          test -d "$APP"
+          mkdir -p "$PACKAGE/Payload"
+          cp -R "$APP" "$PACKAGE/Payload/Irfaali.app"
+          INFO="$PACKAGE/Payload/Irfaali.app/Info.plist"
+          EXE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$INFO")
+          EXE="$PACKAGE/Payload/Irfaali.app/$EXE_NAME"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$INFO")" = iphoneos
+          test -x "$EXE"
+          lipo -archs "$EXE" | tr ' ' '\n' | grep -qx arm64
+          cd "$PACKAGE"
+          /usr/bin/zip -qry Irfaali-1.1.ipa Payload
+          unzip -t Irfaali-1.1.ipa
+          printf '%s\n' "Commit: $GITHUB_SHA" "Unsigned production Release build. Apply the owner's Apple signing before installation." > BUILD-INFO.txt
+          shasum -a 256 Irfaali-1.1.ipa >> BUILD-INFO.txt
+
+      - name: Upload production IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Irfaali-1.1-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/IrfaaliDevicePackage/Irfaali-1.1.ipa
+            ${{ runner.temp }}/IrfaaliDevicePackage/BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 14

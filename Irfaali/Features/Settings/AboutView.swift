@@ -8,131 +8,122 @@ struct AboutView: View {
             ThemeBackground()
 
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 32) {
                     identityHero
-                    ownershipCard
-                    productCard
+                    productStatement
+                    ownershipSection
+                    versionLine
+                    IrfaaliFooterSignature()
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 36)
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 48)
             }
+            .scrollIndicators(.hidden)
         }
+        .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var identityHero: some View {
-        PremiumSurface {
-            VStack(spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(IrfaaliTheme.emerald.opacity(0.55))
-                        .frame(width: 108, height: 108)
-                        .blur(radius: 18)
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 94, height: 94)
-                        .overlay {
-                            Circle().stroke(.primary.opacity(0.08), lineWidth: 1)
-                        }
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 58, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                }
+        VStack(alignment: .leading, spacing: 22) {
+            Image("OfficialLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 92, height: 92)
+                .accessibilityLabel(AppBranding.appName)
 
-                VStack(spacing: 6) {
-                    Text(AppBranding.appName)
-                        .font(IrfaaliTheme.titleFont(32))
-                    Text(preferences.text(ar: "محرك فيديو احترافي", en: "Premium Video Engine"))
-                        .font(.subheadline.weight(.semibold))
-                        .tracking(0.3)
-                        .foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 7) {
+                Text(AppBranding.appName)
+                    .font(.system(size: 34, weight: .bold))
+
+                Text(preferences.text(ar: "كل لقطة. بشكل أفضل.", en: "Every frame. Refined."))
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var productStatement: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            IrfaaliHairline()
+
+            Text(
+                preferences.text(
+                    ar: "ارفعلي أداة فيديو مصممة حول النتيجة نفسها: صورة أوضح، حركة أدق، وتجربة هادئة.",
+                    en: "Irfaali is built around the result itself: clearer imagery, more precise motion, and a calmer workflow."
+                )
+            )
+            .font(.body)
+            .foregroundStyle(.white.opacity(0.84))
+            .fixedSize(horizontal: false, vertical: true)
+
+            Text(
+                preferences.text(
+                    ar: "ما نضيف علامة مائية أو مقدمة أو خاتمة على فيديوك.",
+                    en: "No watermark, intro or outro is added to your video."
+                )
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
         }
     }
 
-    private var ownershipCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 10) {
-                    Image(systemName: "crown.fill")
-                        .foregroundStyle(IrfaaliTheme.accent)
-                    Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER IDENTITY"))
-                        .font(.caption2.bold())
-                        .tracking(preferences.isArabic ? 0.2 : 1.8)
-                        .foregroundStyle(.secondary)
-                }
+    private var ownershipSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionEyebrow(preferences.text(ar: "الهوية", en: "Identity"))
 
-                HStack(spacing: 5) {
-                    Text(preferences.text(ar: "المالك والمطور", en: "Created & Owned by"))
-                        .foregroundStyle(.primary)
-                    Link(AppBranding.ownerHandle, destination: AppBranding.telegramURL)
-                        .fontWeight(.bold)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                }
-                .font(.headline)
-
-                Link(destination: AppBranding.telegramURL) {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(IrfaaliTheme.accent.opacity(0.12))
-                            Image(systemName: "paperplane.fill")
-                                .foregroundStyle(IrfaaliTheme.accent)
-                        }
-                        .frame(width: 44, height: 44)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Telegram")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(AppBranding.ownerHandle)
-                                .font(.subheadline.bold())
-                                .foregroundStyle(.primary)
-                        }
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption.bold())
+            Link(destination: AppBranding.telegramURL) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(preferences.text(ar: "المالك والمطور", en: "Created & owned by"))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+
+                        Text(AppBranding.ownerHandle)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
                     }
-                    .contentShape(Rectangle())
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(IrfaaliVisual.electricCyan)
                 }
-                .buttonStyle(.plain)
-
-                Divider().opacity(0.25)
-
-                Text(AppBranding.copyright)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .frame(minHeight: 50)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(VIPPlainButtonStyle())
+
+            IrfaaliHairline()
+
+            Text(AppBranding.copyright)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 
-    private var productCard: some View {
-        PremiumSurface {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "checkmark.shield.fill")
-                    .font(.title2)
-                    .foregroundStyle(IrfaaliTheme.accent)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean Output"))
-                        .font(.headline.weight(.bold))
-                    Text(
-                        preferences.text(
-                            ar: "حقوق ارفعلي تظهر داخل التطبيق بس. ما نحط Watermark ولا اسم مطور ولا Intro/Outro على فيديوك.",
-                            en: "Ownership appears inside the app only. Irfaali does not add a watermark, developer name, intro or outro to your video."
-                        )
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+    private var versionLine: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(preferences.text(ar: "الإصدار", en: "Version"))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
         }
+    }
+
+    private func sectionEyebrow(_ title: String) -> some View {
+        Text(title.uppercased(with: preferences.locale))
+            .font(.caption2.weight(.semibold))
+            .tracking(preferences.isArabic ? 0.15 : 1.15)
+            .foregroundStyle(.tertiary)
     }
 }

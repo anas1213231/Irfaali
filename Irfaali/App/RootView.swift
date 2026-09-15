@@ -2,39 +2,77 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var preferences: AppPreferences
+    @State private var selectedTab: Tab = .studio
+
+    private enum Tab: Hashable {
+        case studio
+        case videos
+        case settings
+    }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 StudioView()
             }
+            .opacity(selectedTab == .studio ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
-                    preferences.text(ar: "التعديل", en: "Studio"),
-                    systemImage: "wand.and.stars.inverse"
+                    preferences.text(ar: "تعديل", en: "Edit"),
+                    systemImage: "viewfinder"
                 )
             }
+            .tag(Tab.studio)
 
             NavigationStack {
                 HistoryView()
             }
+            .opacity(selectedTab == .videos ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
-                    preferences.text(ar: "فيديوهاتي", en: "Videos"),
-                    systemImage: "play.rectangle.on.rectangle.fill"
+                    preferences.text(ar: "فيديوهاتي", en: "My Videos"),
+                    systemImage: "rectangle.stack"
                 )
             }
+            .tag(Tab.videos)
 
             NavigationStack {
                 SettingsView()
             }
+            .opacity(selectedTab == .settings ? 1 : 0)
+            .animation(
+                preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+                value: selectedTab
+            )
             .tabItem {
                 Label(
                     preferences.text(ar: "الإعدادات", en: "Settings"),
-                    systemImage: "gearshape.fill"
+                    systemImage: "gearshape"
                 )
             }
+            .tag(Tab.settings)
         }
-        .tint(IrfaaliTheme.accent)
+        .foregroundStyle(.white)
+        .tint(IrfaaliVisual.electricCyan)
+        .buttonStyle(VIPPlainButtonStyle())
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .animation(
+            preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
+            value: selectedTab
+        )
+        .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
+            preferences.hapticsEnabled
+        }
     }
 }

@@ -21,9 +21,10 @@ Copyright: © 2026 @ucorc. All Rights Reserved.
 - Every successful export is re-analyzed with AVFoundation and shown in a verified before/after technical comparison.
 - Save exported video to Photos using real add-only Photo Library authorization, or share with the iOS Share Sheet.
 - Persistent export history with SwiftData.
-- Read-only Experimental Container Lab with explicit native/generated/retimed/timing-only terminology.
+- Read-only output details with explicit source/output timing terminology.
 - Video exports remain clean: no developer watermark, logo overlay, intro, or outro is injected into user media.
 - The current product has no StoreKit subscription, paywall, credits/coins, paid codec/FPS tier, export limit, trial gate, or forced ads.
+- The release interface exposes only source-supported frame rates and resolutions; unsupported synthesis is not advertised or enabled.
 
 ## Generate the Xcode project
 

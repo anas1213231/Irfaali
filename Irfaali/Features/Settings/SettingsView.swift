@@ -2,272 +2,204 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var preferences: AppPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasAppeared = false
 
     var body: some View {
         ZStack {
             ThemeBackground()
 
             ScrollView {
-                VStack(spacing: 16) {
-                    languageCard
-                    appearanceCard
-                    experienceCard
-                    developerCard
-                    aboutCard
-                    accessCard
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 36)
-            }
-        }
-        .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
-        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.language)
-        .animation(preferences.animationsEnabled ? .snappy : nil, value: preferences.appearance)
-    }
-
-    private var languageCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                Label(
-                    preferences.text(ar: "لغة التطبيق", en: "App Language"),
-                    systemImage: "character.bubble.fill"
-                )
-                .font(.headline.weight(.bold))
-
-                Picker("Language", selection: $preferences.language) {
-                    Text("العربية").tag(AppPreferences.Language.arabic)
-                    Text("English").tag(AppPreferences.Language.english)
-                }
-                .pickerStyle(.segmented)
-
-                Text(
-                    preferences.text(
-                        ar: "اختار اللي يريحك يا وحش — ونرتب الواجهة من اليمين أو اليسار لحالها.",
-                        en: "Choose your language and the interface direction updates automatically."
-                    )
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var appearanceCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Label(
-                        preferences.text(ar: "ثيم التطبيق", en: "Appearance"),
-                        systemImage: "circle.lefthalf.filled"
-                    )
-                    .font(.headline.weight(.bold))
-
-                    Spacer()
-
-                    Text(preferences.appearanceName(preferences.appearance))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(IrfaaliTheme.accent)
-                }
-
-                VStack(spacing: 9) {
-                    ForEach(AppPreferences.Appearance.allCases) { appearance in
-                        Button {
-                            preferences.appearance = appearance
+                VStack(alignment: .leading, spacing: 30) {
+                    settingsSection(title: preferences.text(ar: "اللغة", en: "Language")) {
+                        Menu {
+                            Button("العربية") { preferences.language = .arabic }
+                            Button("English") { preferences.language = .english }
                         } label: {
-                            HStack(spacing: 12) {
-                                themePreview(for: appearance)
-
-                                Text(preferences.appearanceName(appearance))
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-
-                                Spacer()
-
-                                Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
-                                    .font(.title3)
-                                    .foregroundStyle(preferences.appearance == appearance ? IrfaaliTheme.accent : .secondary)
-                            }
-                            .padding(.vertical, 4)
+                            settingsRow(
+                                title: preferences.text(ar: "لغة التطبيق", en: "App language"),
+                                value: preferences.isArabic ? "العربية" : "English",
+                                showsChevron: true
+                            )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(VIPPlainButtonStyle())
+                        .sensoryFeedback(.selection, trigger: preferences.language.rawValue) { oldValue, newValue in
+                            preferences.hapticsEnabled && oldValue != newValue
+                        }
                     }
-                }
-            }
-        }
-    }
 
-    private var experienceCard: some View {
-        PremiumSurface {
-            VStack(spacing: 14) {
-                Toggle(isOn: $preferences.animationsEnabled) {
-                    Label(
-                        preferences.text(ar: "الأنيميشن والحركات", en: "Animations & Motion"),
-                        systemImage: "sparkles"
-                    )
-                    .font(.subheadline.weight(.semibold))
-                }
-                .tint(IrfaaliTheme.accent)
-
-                Divider().opacity(0.3)
-
-                Toggle(isOn: $preferences.hapticsEnabled) {
-                    Label(
-                        preferences.text(ar: "اهتزازات اللمس", en: "Haptic Feedback"),
-                        systemImage: "iphone.radiowaves.left.and.right"
-                    )
-                    .font(.subheadline.weight(.semibold))
-                }
-                .tint(IrfaaliTheme.accent)
-            }
-        }
-    }
-
-    private var developerCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(preferences.text(ar: "المالك", en: "OWNER"))
-                    .font(.caption2.bold())
-                    .tracking(preferences.isArabic ? 0.2 : 1.5)
-                    .foregroundStyle(.secondary)
-
-                Link(destination: AppBranding.telegramURL) {
-                    HStack(spacing: 13) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(IrfaaliTheme.accent.opacity(0.13))
-                            Image(systemName: "paperplane.fill")
-                                .foregroundStyle(IrfaaliTheme.accent)
+                    settingsSection(title: preferences.text(ar: "المظهر", en: "Appearance")) {
+                        VStack(spacing: 0) {
+                            appearanceButton(.dark)
+                            IrfaaliHairline()
+                            appearanceButton(.light)
                         }
-                        .frame(width: 48, height: 48)
+                    }
 
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(AppBranding.ownerHandle)
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.primary)
-                            Text(preferences.text(ar: "تلجرام · حقوق ارفعلي", en: "Telegram · Irfaali owner"))
-                                .font(.caption)
+                    settingsSection(title: preferences.text(ar: "ارفعلي", en: "Irfaali")) {
+                        Link(destination: AppBranding.telegramURL) {
+                            settingsRow(
+                                title: preferences.text(ar: "المطور والمالك", en: "Developer and owner"),
+                                value: AppBranding.ownerHandle,
+                                showsChevron: true
+                            )
+                        }
+                        .buttonStyle(VIPPlainButtonStyle())
+
+                        IrfaaliHairline()
+
+                        NavigationLink {
+                            AboutView()
+                        } label: {
+                            settingsRow(
+                                title: preferences.text(ar: "عن ارفعلي", en: "About Irfaali"),
+                                value: nil,
+                                showsChevron: true
+                            )
+                        }
+                        .buttonStyle(VIPPlainButtonStyle())
+                    }
+
+                    settingsSection(title: preferences.text(ar: "الإصدار", en: "Version")) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(preferences.text(ar: "نسخة التطبيق", en: "App version"))
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.white)
+
+                            Spacer()
+
+                            Text(versionText)
+                                .font(.subheadline.monospacedDigit().weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
-
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
+                        .frame(minHeight: 48)
                     }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
 
-    private var aboutCard: some View {
-        NavigationLink {
-            AboutView()
-        } label: {
-            PremiumSurface {
-                HStack(spacing: 13) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.primary)
-                        Text(
-                            preferences.text(
-                                ar: "الحقوق، الإصدار وهوية التطبيق",
-                                en: "Ownership, version and app identity"
-                            )
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.forward")
-                        .font(.caption.bold())
+                    Text(AppBranding.copyright)
+                        .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 8)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 48)
+                .opacity(hasAppeared ? 1 : 0)
+                .offset(y: hasAppeared ? 0 : 5)
             }
+            .scrollIndicators(.hidden)
         }
-        .buttonStyle(.plain)
-    }
-
-    private var accessCard: some View {
-        PremiumSurface {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Label(
-                        preferences.text(ar: "الوصول", en: "Access"),
-                        systemImage: "sparkles"
-                    )
-                    .font(.headline.weight(.bold))
-                    Spacer()
-                    Text("FREE")
-                        .font(.caption2.bold())
-                        .tracking(1.2)
-                        .foregroundStyle(IrfaaliTheme.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(IrfaaliTheme.accent.opacity(0.11), in: Capsule())
+        .foregroundStyle(.white)
+        .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
+        .navigationBarTitleDisplayMode(.large)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.language)
+        .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.appearance)
+        .onAppear {
+            guard !hasAppeared else { return }
+            if preferences.animationsEnabled && !reduceMotion {
+                withAnimation(.easeOut(duration: 0.20)) {
+                    hasAppeared = true
                 }
-
-                Text(
-                    preferences.text(
-                        ar: "كل قدرات ارفعلي مجانية — بدون اشتراك، بدون Credits، وبدون Paywall.",
-                        en: "Irfaali is free to use with no subscriptions, credits or paywalls."
-                    )
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                Divider().opacity(0.3)
-
-                HStack {
-                    Text(preferences.text(ar: "الإصدار", en: "Version"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(versionText)
-                        .font(.caption.monospacedDigit().weight(.semibold))
-                }
+            } else {
+                hasAppeared = true
             }
         }
     }
 
     @ViewBuilder
-    private func themePreview(for appearance: AppPreferences.Appearance) -> some View {
-        let colors: [Color] = {
-            switch appearance {
-            case .system:
-                [.white, .black]
-            case .pureBlack:
-                [.black, .black]
-            case .dark:
-                [Color(white: 0.10), Color(white: 0.18)]
-            case .light:
-                [Color(white: 0.82), .white]
-            case .pureWhite:
-                [.white, .white]
-            }
-        }()
+    private func settingsSection<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased(with: preferences.locale))
+                .font(.caption2.weight(.semibold))
+                .tracking(preferences.isArabic ? 0.15 : 1.15)
+                .foregroundStyle(.tertiary)
 
-        Circle()
-            .fill(
-                LinearGradient(
-                    colors: colors,
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(Circle().stroke(.secondary.opacity(0.25), lineWidth: 1))
-            .frame(width: 30, height: 30)
+            content()
+        }
+    }
+
+    private func settingsRow(
+        title: String,
+        value: String?,
+        showsChevron: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.body.weight(.medium))
+                .foregroundStyle(.white)
+
+            Spacer(minLength: 12)
+
+            if let value {
+                Text(value)
+                    .font(.subheadline.weight(.regular))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if showsChevron {
+                Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.28))
+            }
+        }
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
+    }
+
+    private func appearanceButton(_ appearance: AppPreferences.Appearance) -> some View {
+        let selected = preferences.appearance == appearance
+
+        return Button {
+            withAnimation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil) {
+                preferences.appearance = appearance
+            }
+        } label: {
+            HStack(spacing: 13) {
+                appearanceSwatch(for: appearance)
+
+                Text(preferences.appearanceName(appearance))
+                    .font(.body.weight(selected ? .semibold : .medium))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Image(systemName: selected ? "checkmark" : "")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(selected ? IrfaaliVisual.electricCyan : Color.clear)
+                    .frame(width: 18)
+            }
+            .frame(minHeight: 54)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(VIPPlainButtonStyle())
+    }
+
+    private func appearanceSwatch(for appearance: AppPreferences.Appearance) -> some View {
+        let colors: [Color]
+        switch appearance {
+        case .system:
+            colors = [.white, .black]
+        case .pureBlack:
+            colors = [.black, .black]
+        case .dark:
+            colors = [Color(white: 0.16), .black]
+        case .light:
+            colors = [Color(white: 0.70), .white]
+        case .pureWhite:
+            colors = [.white, .white]
+        }
+
+        return Circle()
+            .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 0.5))
+            .frame(width: 20, height: 20)
     }
 
     private var versionText: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-        return "\(version) (\(build))"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1"
     }
 }
