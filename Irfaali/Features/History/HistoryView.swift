@@ -15,7 +15,7 @@ struct HistoryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     libraryHeader
-                        .padding(.bottom, records.isEmpty ? 44 : 22)
+                        .padding(.bottom, records.isEmpty ? 34 : 8)
 
                     if records.isEmpty {
                         emptyState
@@ -27,68 +27,66 @@ struct HistoryView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 44)
+                .padding(.bottom, 48)
             }
             .scrollIndicators(.hidden)
         }
         .foregroundStyle(.white)
         .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "My Videos"))
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
                 .presentationBackground(Color.black)
-                .presentationCornerRadius(22)
+                .presentationCornerRadius(20)
         }
     }
 
     private var libraryHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .lastTextBaseline) {
-                Text(preferences.text(ar: "شغلك.", en: "Your work."))
-                    .font(.system(size: 38, weight: .bold))
-                    .tracking(preferences.isArabic ? 0 : -1.1)
-
-                Spacer()
-
-                Text("\(records.count)")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(records.isEmpty ? Color.white.opacity(0.28) : IrfaaliVisual.electricCyan)
-            }
-
+        HStack(alignment: .firstTextBaseline) {
             Text(
-                preferences.text(
-                    ar: "كل نتيجة جاهزة ترجع لها بسرعة.",
-                    en: "Every finished result, ready when you need it."
-                )
+                records.isEmpty
+                    ? preferences.text(ar: "ما عندك نتائج للحين", en: "No results yet")
+                    : preferences.text(ar: "آخر النتائج", en: "Recent results")
             )
-            .font(.subheadline)
+            .font(.subheadline.weight(.medium))
             .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if !records.isEmpty {
+                Text("\(records.count)")
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
         }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 24) {
             ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.10), lineWidth: 0.8)
-                    .frame(width: 74, height: 58)
-
+                Rectangle()
+                    .fill(Color.white.opacity(0.10))
+                    .frame(width: 64, height: 0.5)
+                Rectangle()
+                    .fill(Color.white.opacity(0.10))
+                    .frame(width: 0.5, height: 42)
                 Image(systemName: "play.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.78))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.76))
             }
+            .frame(width: 64, height: 42)
 
             VStack(alignment: .leading, spacing: 7) {
-                Text(preferences.text(ar: "أول نتيجة بتعيش هني.", en: "Your first result will live here."))
-                    .font(.title3.weight(.bold))
+                Text(preferences.text(ar: "أول فيديو معالج يظهر هني.", en: "Your first processed video appears here."))
+                    .font(.title3.weight(.semibold))
 
                 Text(
                     preferences.text(
-                        ar: "عالج فيديو، وبتلقى الملف وبياناته جاهزة لك.",
-                        en: "Process a video and its final file and details will appear here."
+                        ar: "الملف النهائي وبياناته يظلون جاهزين لك.",
+                        en: "The final file and its details stay ready for you."
                     )
                 )
                 .font(.subheadline)
@@ -97,62 +95,55 @@ struct HistoryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 20)
+        .padding(.top, 30)
     }
 
     private func videoRow(_ record: ProcessedVideoRecord) -> some View {
         VStack(spacing: 14) {
-            HStack(spacing: 14) {
+            HStack(alignment: .center, spacing: 14) {
                 Button {
                     guard record.outputExists else { return }
                     playingRecord = record
                 } label: {
                     ZStack {
                         VideoThumbnailView(url: record.outputURL, isAvailable: record.outputExists)
-
-                        Color.black.opacity(record.outputExists ? 0.10 : 0.38)
-
-                        Circle()
-                            .fill(Color.black.opacity(0.66))
-                            .frame(width: 36, height: 36)
-                            .overlay {
-                                Circle()
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                            }
+                        Color.black.opacity(record.outputExists ? 0.08 : 0.42)
 
                         Image(systemName: record.outputExists ? "play.fill" : "exclamationmark.triangle.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(record.outputExists ? .white : .orange)
-                            .offset(x: record.outputExists ? 1 : 0)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(record.outputExists ? Color.white.opacity(0.92) : Color.orange)
+                            .padding(9)
+                            .background(Color.black.opacity(0.56), in: Circle())
                     }
-                    .frame(width: 92, height: 92)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
-                    }
+                    .frame(width: 124, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(VIPPlainButtonStyle())
                 .disabled(!record.outputExists)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(record.sourceFileName)
-                        .font(.headline.weight(.bold))
+                        .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-
-                    Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
 
                     Text("\(record.width)×\(record.height) · \(IrfaaliFormatters.fps(record.fps))")
-                        .font(.caption.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .font(.caption.monospacedDigit().weight(.medium))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
 
-                    Text(record.codec)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(record.outputExists ? IrfaaliVisual.electricCyan : Color.orange)
+                            .frame(width: 4, height: 4)
+
+                        Text(
+                            record.outputExists
+                                ? preferences.text(ar: "جاهز", en: "Ready")
+                                : preferences.text(ar: "الملف غير موجود", en: "File missing")
+                        )
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(record.outputExists ? Color.white.opacity(0.56) : Color.orange)
+                    }
                 }
 
                 Spacer(minLength: 4)
@@ -171,32 +162,25 @@ struct HistoryView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.body.weight(.bold))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 40, height: 44)
+                        .frame(width: 34, height: 44)
                         .contentShape(Rectangle())
                 }
             }
 
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(record.outputExists ? IrfaaliVisual.electricCyan : Color.orange)
-                    .frame(width: 6, height: 6)
-
-                Text(
-                    record.outputExists
-                        ? preferences.text(ar: "جاهز", en: "Ready")
-                        : preferences.text(ar: "الملف مو موجود بالجهاز", en: "File missing from device")
-                )
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(record.outputExists ? Color.white.opacity(0.60) : Color.orange)
+            HStack(alignment: .firstTextBaseline) {
+                Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
 
                 Spacer()
 
                 if record.outputExists {
-                    Text(formattedFileSize(record))
-                        .font(.caption.monospacedDigit().weight(.semibold))
+                    Text("\(record.codec) · \(formattedFileSize(record))")
+                        .font(.caption2.monospacedDigit())
                         .foregroundStyle(.tertiary)
+                        .lineLimit(1)
                 }
             }
 
