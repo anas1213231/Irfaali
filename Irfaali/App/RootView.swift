@@ -19,8 +19,8 @@ struct RootView: View {
             }
             .tabItem {
                 Label(
-                    preferences.text(ar: "التعديل", en: "Editor"),
-                    systemImage: "wand.and.stars"
+                    preferences.text(ar: "التعديل", en: "Edit"),
+                    systemImage: "slider.horizontal.3"
                 )
             }
             .tag(Tab.studio)
@@ -32,8 +32,8 @@ struct RootView: View {
             }
             .tabItem {
                 Label(
-                    preferences.text(ar: "فيديوهاتي", en: "My videos"),
-                    systemImage: "rectangle.stack.fill"
+                    preferences.text(ar: "فيديوهاتي", en: "My Videos"),
+                    systemImage: "play.rectangle.on.rectangle"
                 )
             }
             .tag(Tab.videos)
@@ -46,7 +46,7 @@ struct RootView: View {
             .tabItem {
                 Label(
                     preferences.text(ar: "الإعدادات", en: "Settings"),
-                    systemImage: "gearshape.fill"
+                    systemImage: "gearshape"
                 )
             }
             .tag(Tab.settings)
@@ -57,10 +57,6 @@ struct RootView: View {
         .tint(IrfaaliTheme.accent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .animation(
-            preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil,
-            value: selectedTab
-        )
         .sensoryFeedback(.selection, trigger: selectedTab) { _, _ in
             preferences.hapticsEnabled
         }
