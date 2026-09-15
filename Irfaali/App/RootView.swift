@@ -14,6 +14,15 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 StudioView()
+                    .toolbar {
+                        ToolbarItem(placement: .principal) {
+                            Image("OfficialLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 32)
+                                .accessibilityLabel(AppBranding.appName)
+                        }
+                    }
             }
             .tabItem {
                 Label(
