@@ -160,7 +160,7 @@ struct IrfaaliProcessingGlyph: View {
             .clipped()
 
             GeometryReader { proxy in
-                let x = proxy.size.width * clampedProgress
+                let x = proxy.size.width * CGFloat(clampedProgress)
                 Rectangle()
                     .fill(IrfaaliVisual.electricCyan.opacity(0.85))
                     .frame(width: 1, height: 112)
