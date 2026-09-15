@@ -51,7 +51,7 @@ struct AboutView: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 10) {
                     Image(systemName: "crown")
-                        .foregroundStyle(IrfaaliTheme.accent)
+                        .foregroundStyle(IrfaaliTheme.silver)
                     Text(preferences.text(ar: "حقوق ارفعلي", en: "Ownership"))
                         .font(.caption2.bold())
                         .tracking(preferences.isArabic ? 0.2 : 1.2)
@@ -107,7 +107,7 @@ struct AboutView: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: "checkmark.shield")
                     .font(.title2)
-                    .foregroundStyle(IrfaaliTheme.accent)
+                    .foregroundStyle(IrfaaliTheme.silver)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(preferences.text(ar: "فيديوك يطلع نظيف", en: "Clean output"))
                         .font(.headline.weight(.bold))
