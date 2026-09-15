@@ -10,13 +10,9 @@ struct PremiumSurface<Content: View>: View {
 
     var body: some View {
         content
-            .padding(17)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(borderColor, lineWidth: 0.8)
-            }
-            .shadow(color: shadowColor, radius: 5, y: 2)
+            .padding(20)
+            .background(ObsidianGlass(cornerRadius: 18)) // UI-UPGRADE
+            .shadow(color: shadowColor, radius: 12, y: 6)
     }
 
     private var borderColor: Color {
@@ -42,7 +38,7 @@ struct MetricTile: View {
                 .foregroundStyle(IrfaaliTheme.accent)
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
             Text(value)
                 .font(.system(.body, design: .default, weight: .semibold))
                 .lineLimit(1)
@@ -50,10 +46,10 @@ struct MetricTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(tileFill, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(ObsidianGlass(cornerRadius: 15))
         .overlay {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(colorScheme == .dark ? .white.opacity(0.055) : .black.opacity(0.05), lineWidth: 0.7)
+                .stroke(colorScheme == .dark ? .white.opacity(0.055) : .black.opacity(0.05), lineWidth: 0.5)
         }
     }
 

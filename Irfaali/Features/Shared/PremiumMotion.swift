@@ -9,10 +9,10 @@ struct PremiumPressFeedback: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(isPressed && isEnabled && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
+            .scaleEffect(isPressed && isEnabled && preferences.animationsEnabled && !reduceMotion ? 0.97 : 1)
             .animation(
                 preferences.animationsEnabled && !reduceMotion
-                    ? .easeInOut(duration: 0.10)
+                    ? .easeOut(duration: 0.12)
                     : nil,
                 value: isPressed
             )
@@ -78,11 +78,13 @@ struct PremiumSliderFeedback: ViewModifier {
                     let inset: CGFloat = 14
                     let width = max(0, geometry.size.width - inset * 2)
                     let x = inset + width * (layoutDirection == .rightToLeft ? 1 - fraction : fraction)
-                    // UI-UPGRADE: A one-point accent, without blur, a replacement thumb or a pulse.
+                    // UI-UPGRADE: Gradient accent follows the unchanged native slider value.
                     Capsule()
-                        .fill(IrfaaliTheme.accent.opacity(isDragging && isEnabled ? 0.65 : 0.25))
-                        .frame(width: max(0, width * fraction), height: 1)
-                        .offset(x: layoutDirection == .rightToLeft ? x : inset, y: geometry.size.height / 2 - 0.5)
+                        .fill(IrfaaliTheme.luminousAccent)
+                        .opacity(isEnabled ? (isDragging ? 0.95 : 0.65) : 0.25)
+                        .shadow(color: IrfaaliTheme.accent.opacity(isDragging && isEnabled ? 0.28 : 0), radius: 4)
+                        .frame(width: max(0, width * fraction), height: 2)
+                        .offset(x: layoutDirection == .rightToLeft ? x : inset, y: geometry.size.height / 2 - 1)
                 }
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -93,7 +95,7 @@ struct PremiumSliderFeedback: ViewModifier {
                         dragging = isEnabled
                     }
             )
-            .animation(preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil, value: isDragging)
+            .animation(preferences.animationsEnabled && !reduceMotion ? .easeOut(duration: 0.12) : nil, value: isDragging)
             .sensoryFeedback(.impact(weight: .light), trigger: isDragging) { old, new in
                 !old && new && isEnabled && preferences.hapticsEnabled
             }

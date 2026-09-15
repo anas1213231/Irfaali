@@ -53,6 +53,7 @@ struct RootView: View {
         }
         .modifier(AppLanguageLayout()) // UI-UPGRADE: react to in-app language changes
         .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: inherited by navigation destinations
+        .foregroundStyle(IrfaaliTheme.primaryText) // UI-UPGRADE: adaptive crisp type
         .tint(IrfaaliTheme.accent)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)

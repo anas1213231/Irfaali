@@ -34,6 +34,9 @@ struct HistoryView: View {
         .sheet(item: $playingRecord) { record in
             VideoPreviewSheet(record: record)
                 .environmentObject(preferences)
+                .presentationBackground(.ultraThinMaterial) // UI-UPGRADE: native frosted sheet
+                .presentationCornerRadius(28)
+                .overlay(RoundedRectangle(cornerRadius: 28).strokeBorder(.white.opacity(0.20), lineWidth: 0.5).allowsHitTesting(false))
         }
     }
 
@@ -65,7 +68,7 @@ struct HistoryView: View {
                     )
                 )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
             }
 
             Spacer()
@@ -104,7 +107,7 @@ struct HistoryView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .stroke(.white.opacity(0.10), lineWidth: 1)
+                                .strokeBorder(.white.opacity(0.22), lineWidth: 0.5)
                         }
                     }
                     .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
@@ -117,7 +120,7 @@ struct HistoryView: View {
 
                         Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(IrfaaliTheme.silver)
 
                         Text(preferences.text(ar: "فيديو مُصدّر", en: "Exported video"))
                             .font(.caption2.weight(.bold))
@@ -143,7 +146,7 @@ struct HistoryView: View {
                         Image(systemName: "ellipsis.circle.fill")
                             .font(.title2)
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(IrfaaliTheme.silver)
                     }
                 }
 
@@ -168,7 +171,7 @@ struct HistoryView: View {
                     if record.outputExists {
                         Text(formattedFileSize(record))
                             .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(IrfaaliTheme.silver)
                     }
                 }
             }
@@ -182,7 +185,7 @@ struct HistoryView: View {
             .minimumScaleFactor(0.72)
             .padding(.horizontal, 9)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(ObsidianGlass(cornerRadius: 30))
     }
 
     private func formattedFileSize(_ record: ProcessedVideoRecord) -> String {

@@ -160,7 +160,7 @@ struct StudioView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text(preferences.text(ar: "عدّل الإضاءة والتفاصيل، وشاهد النتيجة قبل التصدير.", en: "Adjust lighting and detail. Preview your changes before processing."))
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,8 +187,8 @@ struct StudioView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity, minHeight: 40)
             }
-            .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
-            .foregroundStyle(.secondary)
+            .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 120ms press + light haptic
+            .foregroundStyle(IrfaaliTheme.silver)
         }
         .disabled(model.isAnalyzing || model.isProcessing)
     }
@@ -212,9 +212,11 @@ struct StudioView: View {
                 if model.isProcessing {
                     ZStack {
                         VideoThumbnailView(url: info.url, isAvailable: true)
-                        Color.black.opacity(0.45)
+                        Color.black.opacity(0.32)
+                        IridescentProcessingScanner() // UI-UPGRADE: preview-only glass scanner
                         VStack(spacing: 12) {
                             ProgressView().tint(.white)
+                                .opacity(0).accessibilityHidden(true) // UI-UPGRADE: scanner keeps the original loader spacing
                             Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
                                 .font(.headline).foregroundStyle(.white)
                             Text("\(Int(model.progress * 100))%")
@@ -231,11 +233,12 @@ struct StudioView: View {
             }
             .frame(height: info.height > info.width ? 330 : 230)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.white.opacity(0.20), lineWidth: 0.5).allowsHitTesting(false))
             .overlay(alignment: .topLeading) {
                 Text(preferences.text(ar: previewExport ? "الناتج" : (showOriginal ? "الأصل" : "التعديل"), en: previewExport ? "EXPORTED" : (showOriginal ? "ORIGINAL" : "ADJUSTED")))
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(.regularMaterial, in: Capsule())
+                    .background(ObsidianGlass(cornerRadius: 30))
                     .padding(12)
             }
             if !previewExport && !model.isProcessing {
@@ -245,7 +248,7 @@ struct StudioView: View {
                 }
                 .pickerStyle(.segmented)
                 Text(preferences.text(ar: "معاينة الألوان والتفاصيل مباشرة. الدقة والفريمات تُطبّق عند التصدير.", en: "Live color and detail preview. Resolution and frame rate are applied on export."))
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(IrfaaliTheme.silver)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -266,14 +269,14 @@ struct StudioView: View {
                                 .padding(.horizontal, 16).padding(.vertical, 12)
                                 .background {
                                     if model.enhancement.mode == mode {
-                                        Capsule().fill(IrfaaliTheme.accent.opacity(0.2))
-                                            .overlay(Capsule().stroke(IrfaaliTheme.accent.opacity(0.55), lineWidth: 1)) // UI-UPGRADE: static selection accent
+                                        Capsule().fill(IrfaaliTheme.luminousAccent.opacity(0.14))
+                                            .overlay(Capsule().stroke(IrfaaliTheme.luminousAccent.opacity(0.65), lineWidth: 0.5)) // UI-UPGRADE: static selection accent
                                     } else {
                                         Capsule().fill(Color.secondary.opacity(0.08))
                                     }
                                 }
                         }
-                        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
+                        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 120ms press + light haptic
                     }
                 }
             }
@@ -305,7 +308,7 @@ struct StudioView: View {
                         )
                     )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
                 }
 
                 Spacer(minLength: 0)
@@ -335,7 +338,7 @@ struct StudioView: View {
 
                 Text(info.fileName)
                     .font(.footnote.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
                     .lineLimit(1)
 
                 HStack(spacing: 10) {
@@ -398,7 +401,7 @@ struct StudioView: View {
 
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
 
             Spacer(minLength: 8)
 
@@ -429,7 +432,7 @@ struct StudioView: View {
                             )
                         )
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(IrfaaliTheme.silver)
                     }
 
                     Spacer(minLength: 0)
@@ -518,7 +521,7 @@ struct StudioView: View {
 
                 Text(outputExplanation(info))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
                     .fixedSize(horizontal: false, vertical: true)
 
                 outputSummary(info)
@@ -603,10 +606,10 @@ struct StudioView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 13)
+            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 100ms press + light haptic
+        .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE: 120ms press + light haptic
         .disabled(model.isProcessing)
     }
 
@@ -624,11 +627,11 @@ struct StudioView: View {
                 )
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(IrfaaliTheme.silver)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(ObsidianGlass(cornerRadius: 15))
     }
 
     private func enhancementSlider(
@@ -678,18 +681,18 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(preferences.text(ar: "الناتج المتوقع", en: "Expected output"))
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
                 Text("\(Int(size.width))×\(Int(size.height)) · \(IrfaaliFormatters.fps(fps))")
                     .font(.headline.monospacedDigit())
                 Text(codec)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
             }
 
             Spacer(minLength: 0)
         }
         .padding(13)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(ObsidianGlass(cornerRadius: 15))
     }
 
     private var processingProgress: some View {
@@ -713,7 +716,7 @@ struct StudioView: View {
                         .font(.subheadline.bold())
                     Text(processingStageCaption)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(IrfaaliTheme.silver)
                 }
 
                 Spacer(minLength: 0)
@@ -733,7 +736,7 @@ struct StudioView: View {
                 )
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(IrfaaliTheme.silver)
 
             if model.canCancelProcessing {
                 Button {
@@ -749,7 +752,7 @@ struct StudioView: View {
             }
         }
         .padding(13)
-        .background(IrfaaliTheme.accent.opacity(0.065), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background(ObsidianGlass(cornerRadius: 15))
     }
 
     private var processingStageIcon: String {
@@ -836,7 +839,7 @@ struct StudioView: View {
 
                 Text(fpsText)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
 
                 if let source = model.info, let output {
                     HStack(spacing: 9) {
@@ -944,7 +947,7 @@ private struct SourceMetric: View {
                 .foregroundStyle(IrfaaliTheme.accent)
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
             Text(value)
                 .font(.headline.monospacedDigit())
                 .lineLimit(1)
@@ -976,7 +979,7 @@ private struct ComparisonColumn: View {
                 .font(.caption)
                 .lineLimit(1)
                 .minimumScaleFactor(0.76)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(IrfaaliTheme.silver)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(11)
@@ -996,10 +999,13 @@ private struct PremiumPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 16)
             .frame(minHeight: 52)
             .background(
-                IrfaaliTheme.accent.opacity(configuration.isPressed ? 0.74 : 0.96),
+                IrfaaliTheme.primaryButtonFill.opacity(configuration.isPressed ? 0.85 : 1),
                 in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
-            .foregroundStyle(Color.black)
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(IrfaaliTheme.luminousAccent.opacity(0.7), lineWidth: 0.5))
+            .shadow(color: IrfaaliTheme.accent.opacity(configuration.isPressed ? 0.08 : 0.18), radius: 10, x: -4, y: 4)
+            .shadow(color: IrfaaliTheme.accentDeep.opacity(configuration.isPressed ? 0.06 : 0.16), radius: 10, x: 4, y: 4)
+            .foregroundStyle(Color.white)
             .modifier(PremiumPressFeedback(isPressed: configuration.isPressed)) // UI-UPGRADE
     }
 }
@@ -1011,19 +1017,11 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.bold))
-            .padding(.horizontal, 13)
+            .padding(.horizontal, 12)
             .frame(minHeight: 48)
-            .background(
-                colorScheme == .dark
-                    ? Color.white.opacity(configuration.isPressed ? 0.10 : 0.055)
-                    : Color.white.opacity(configuration.isPressed ? 0.92 : 0.76),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(colorScheme == .dark ? .white.opacity(0.11) : .black.opacity(0.08), lineWidth: 1)
-            }
-            .foregroundStyle(.primary)
+            .background(ObsidianGlass(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).fill(.white.opacity(configuration.isPressed ? 0.06 : 0)))
+            .foregroundStyle(IrfaaliTheme.primaryText)
             .modifier(PremiumPressFeedback(isPressed: configuration.isPressed)) // UI-UPGRADE
     }
 }

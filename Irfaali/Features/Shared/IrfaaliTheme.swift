@@ -1,19 +1,35 @@
 import SwiftUI
 
 enum IrfaaliTheme {
-    /// The brand palette is intentionally small: deep navy, ice blue and white.
-    /// Keeping one accent across controls makes the app feel like one product,
-    /// rather than a collection of unrelated cards.
+    // UI-UPGRADE: Neutral obsidian surfaces; color is reserved for interactive accents.
     static let accent = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.72, green: 0.88, blue: 1, alpha: 1)
-            : UIColor(red: 0.12, green: 0.32, blue: 0.58, alpha: 1)
+            ? UIColor(red: 0.30, green: 0.86, blue: 0.94, alpha: 1)
+            : UIColor(red: 0.05, green: 0.37, blue: 0.44, alpha: 1)
     })
-    static let accentDeep = Color(red: 0.25, green: 0.48, blue: 0.73)
-    static let emerald = Color(red: 0.04, green: 0.15, blue: 0.30)
-    static let ink = Color(red: 0.012, green: 0.025, blue: 0.065)
-    static let secondaryInk = Color(red: 0.035, green: 0.085, blue: 0.17)
+    static let accentDeep = Color(red: 0.43, green: 0.27, blue: 0.82)
+    static let emerald = Color(red: 0.055, green: 0.055, blue: 0.062)
+    static let ink = Color(red: 0.012, green: 0.012, blue: 0.016)
+    static let secondaryInk = Color(red: 0.035, green: 0.035, blue: 0.044)
     static let warmWhite = Color(red: 0.985, green: 0.99, blue: 1.00)
+
+    static let primaryText = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? .white : UIColor(white: 0.08, alpha: 1)
+    })
+    static let silver = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.73, green: 0.75, blue: 0.79, alpha: 1)
+            : UIColor(red: 0.32, green: 0.34, blue: 0.39, alpha: 1)
+    })
+    static let luminousAccent = LinearGradient(
+        colors: [Color(red: 0.26, green: 0.88, blue: 0.96), Color(red: 0.47, green: 0.30, blue: 0.89)],
+        startPoint: .leading, endPoint: .trailing
+    )
+    // Dark jewel tones keep white button labels readable; brighter color stays at the edge.
+    static let primaryButtonFill = LinearGradient(
+        colors: [Color(red: 0.055, green: 0.31, blue: 0.39), Color(red: 0.24, green: 0.12, blue: 0.46)],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
 
     /// The same quiet surface used by the native launch screen hand-off.
     static let launchBackground = LinearGradient(
@@ -54,7 +70,7 @@ struct ThemeBackground: View {
                 Color.clear
             } else if isDark {
                 RadialGradient(
-                    colors: [IrfaaliTheme.emerald.opacity(0.11), .clear],
+                    colors: [Color.white.opacity(0.035), .clear],
                     center: .topTrailing,
                     startRadius: 8,
                     endRadius: 360
@@ -62,14 +78,14 @@ struct ThemeBackground: View {
                 .blendMode(.screen)
 
                 RadialGradient(
-                    colors: [IrfaaliTheme.accentDeep.opacity(0.10), .clear],
+                    colors: [IrfaaliTheme.secondaryInk.opacity(0.30), .clear],
                     center: .bottomLeading,
                     startRadius: 10,
                     endRadius: 300
                 )
             } else {
                 RadialGradient(
-                    colors: [IrfaaliTheme.accent.opacity(0.10), .clear],
+                    colors: [Color.black.opacity(0.035), .clear],
                     center: .topTrailing,
                     startRadius: 12,
                     endRadius: 420
@@ -94,7 +110,7 @@ struct ThemeBackground: View {
             Color.black
         case .dark:
             LinearGradient(
-                colors: [IrfaaliTheme.ink, IrfaaliTheme.secondaryInk, Color.black],
+                colors: [Color.black, IrfaaliTheme.ink, Color.black],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -102,20 +118,20 @@ struct ThemeBackground: View {
             Color.white
         case .light:
             LinearGradient(
-                colors: [IrfaaliTheme.warmWhite, Color(red: 0.91, green: 0.95, blue: 1.00)],
+                colors: [IrfaaliTheme.warmWhite, Color(red: 0.93, green: 0.94, blue: 0.96)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         case .system:
             if colorScheme == .dark {
                 LinearGradient(
-                    colors: [IrfaaliTheme.ink, IrfaaliTheme.secondaryInk, .black],
+                    colors: [Color.black, IrfaaliTheme.ink, .black],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             } else {
                 LinearGradient(
-                    colors: [IrfaaliTheme.warmWhite, Color(red: 0.91, green: 0.95, blue: 1.00)],
+                    colors: [IrfaaliTheme.warmWhite, Color(red: 0.93, green: 0.94, blue: 0.96)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

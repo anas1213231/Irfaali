@@ -38,7 +38,7 @@ struct AboutView: View {
                     Text(preferences.text(ar: "معالجة فيديو موثوقة", en: "Verified video processing"))
                         .font(.subheadline.weight(.semibold))
                         .tracking(0.3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(IrfaaliTheme.silver)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -55,12 +55,12 @@ struct AboutView: View {
                     Text(preferences.text(ar: "حقوق ارفعلي", en: "OWNER"))
                         .font(.caption2.bold())
                         .tracking(preferences.isArabic ? 0.2 : 1.8)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(IrfaaliTheme.silver)
                 }
 
                 HStack(spacing: 5) {
                     Text(preferences.text(ar: "المالك والمطور", en: "Developer and owner"))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(IrfaaliTheme.primaryText)
                     Link(AppBranding.ownerHandle, destination: AppBranding.telegramURL)
                         .fontWeight(.bold)
                         .foregroundStyle(IrfaaliTheme.accent)
@@ -80,15 +80,15 @@ struct AboutView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Telegram")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(IrfaaliTheme.silver)
                             Text(AppBranding.ownerHandle)
                                 .font(.subheadline.bold())
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(IrfaaliTheme.primaryText)
                         }
                         Spacer()
                         Image(systemName: "arrow.up.right")
                             .font(.caption.bold())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(IrfaaliTheme.silver)
                     }
                     .contentShape(Rectangle())
                 }
@@ -98,7 +98,7 @@ struct AboutView: View {
 
                 Text(AppBranding.copyright)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
             }
         }
     }
@@ -119,7 +119,7 @@ struct AboutView: View {
                         )
                     )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(IrfaaliTheme.silver)
                     .fixedSize(horizontal: false, vertical: true)
                 }
             }

@@ -25,6 +25,7 @@ struct SettingsView: View {
                     )
                 )
             }
+            .listRowBackground(ObsidianGlass(cornerRadius: 0)) // UI-UPGRADE
 
             Section {
                 ForEach([AppPreferences.Appearance.light, .dark]) { appearance in
@@ -37,8 +38,8 @@ struct SettingsView: View {
                             appearanceSwatch(for: appearance)
 
                             Text(preferences.appearanceName(appearance))
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(IrfaaliTheme.primaryText)
 
                             Spacer(minLength: 0)
 
@@ -50,6 +51,11 @@ struct SettingsView: View {
                                         : Color.secondary.opacity(0.65)
                                 )
                         }
+                        .overlay(alignment: .bottom) {
+                            if preferences.appearance == appearance {
+                                Rectangle().fill(IrfaaliTheme.luminousAccent.opacity(0.55)).frame(height: 0.5)
+                            }
+                        }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(PremiumInteractiveButtonStyle()) // UI-UPGRADE
@@ -57,6 +63,7 @@ struct SettingsView: View {
             } header: {
                 sectionHeader(ar: "المظهر", en: "Appearance")
             }
+            .listRowBackground(ObsidianGlass(cornerRadius: 0)) // UI-UPGRADE
 
             Section {
                 Link(destination: AppBranding.telegramURL) {
@@ -69,11 +76,11 @@ struct SettingsView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(preferences.text(ar: "المطور والمالك", en: "Developer and owner"))
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(IrfaaliTheme.primaryText)
                             Text(AppBranding.ownerHandle)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(IrfaaliTheme.silver)
                         }
 
                         Spacer(minLength: 0)
@@ -92,20 +99,22 @@ struct SettingsView: View {
             } header: {
                 sectionHeader(ar: "حول التطبيق", en: "About")
             }
+            .listRowBackground(ObsidianGlass(cornerRadius: 0)) // UI-UPGRADE
 
             Section {
                 HStack {
                     Text(preferences.text(ar: "الإصدار", en: "Version"))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(IrfaaliTheme.silver)
                     Spacer()
                     Text(versionText)
                         .font(.body.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(IrfaaliTheme.primaryText)
                 }
             } footer: {
                 Text(AppBranding.copyright)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+            .listRowBackground(ObsidianGlass(cornerRadius: 0)) // UI-UPGRADE
         }
         .sensoryFeedback(.selection, trigger: preferences.language) { _, _ in preferences.hapticsEnabled } // UI-UPGRADE
         .listStyle(.insetGrouped)
@@ -137,7 +146,7 @@ struct SettingsView: View {
 
     private func settingLabel(icon: String, ar: String, en: String) -> some View {
         Label(preferences.text(ar: ar, en: en), systemImage: icon)
-            .font(.body.weight(.medium))
+            .font(.body.weight(.semibold))
     }
 
     private func appearanceSwatch(for appearance: AppPreferences.Appearance) -> some View {
