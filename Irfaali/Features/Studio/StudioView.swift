@@ -548,11 +548,6 @@ struct StudioView: View {
                                 Rectangle()
                                     .fill(selected ? IrfaaliVisual.electricCyan : Color.white.opacity(0.28))
                                     .frame(width: selected ? 2 : 1, height: selected ? 16 : 9)
-                                    .matchedGeometryEffect(
-                                        id: selected ? "fps-selection" : "fps-\(frameRate.id)",
-                                        in: presetSelection,
-                                        isSource: true
-                                    )
 
                                 Text(frameRate.title(isArabic: preferences.isArabic))
                                     .font(.caption.monospacedDigit().weight(selected ? .bold : .medium))
@@ -585,10 +580,7 @@ struct StudioView: View {
                     Button {
                         model.settings.codec = codec
                     } label: {
-                        Label(
-                            codec.title(isArabic: preferences.isArabic),
-                            systemImage: model.settings.codec == codec ? "checkmark" : ""
-                        )
+                        Text(codec.title(isArabic: preferences.isArabic))
                     }
                 }
             } label: {
@@ -1290,11 +1282,11 @@ private struct PrecisionSlider: View {
                     .frame(height: 0.5)
 
                 HStack {
-                    ForEach(0..<9, id: \.self) { _ in
+                    ForEach(0..<9, id: \.self) { index in
                         Rectangle()
                             .fill(Color.white.opacity(isDragging ? 0.22 : 0.10))
                             .frame(width: 0.5, height: 5)
-                        if _ != 8 { Spacer() }
+                        if index != 8 { Spacer() }
                     }
                 }
 
