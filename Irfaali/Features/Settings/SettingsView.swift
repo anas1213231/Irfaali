@@ -12,7 +12,7 @@ struct SettingsView: View {
                     Text("العربية").tag(AppPreferences.Language.arabic)
                     Text("English").tag(AppPreferences.Language.english)
                 } label: {
-                    settingLabel(icon: "character.bubble.fill", ar: "لغة التطبيق", en: "App language")
+                    settingLabel(icon: "character.bubble", ar: "لغة التطبيق", en: "App language")
                 }
                 .pickerStyle(.menu)
             } header: {
@@ -43,20 +43,18 @@ struct SettingsView: View {
 
                             Spacer(minLength: 0)
 
-                            Image(systemName: preferences.appearance == appearance ? "checkmark.circle.fill" : "circle")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(
-                                    preferences.appearance == appearance
-                                        ? IrfaaliTheme.accent
-                                        : Color.secondary.opacity(0.65)
-                                )
+                            if preferences.appearance == appearance {
+                                Image(systemName: "checkmark")
+                                    .font(.body.weight(.bold))
+                                    .foregroundStyle(IrfaaliTheme.accent)
+                            }
                         }
                         .overlay(alignment: .bottom) {
                             if preferences.appearance == appearance {
                                 Rectangle()
                                     .fill(IrfaaliTheme.luminousAccent)
                                     .frame(height: 0.75)
-                                    .shadow(color: IrfaaliTheme.accent.opacity(0.22), radius: 3)
+                                    .shadow(color: IrfaaliTheme.accent.opacity(0.18), radius: 2)
                             }
                         }
                         .contentShape(Rectangle())
@@ -71,11 +69,11 @@ struct SettingsView: View {
             Section {
                 Link(destination: AppBranding.telegramURL) {
                     HStack(spacing: 12) {
-                        Image(systemName: "paperplane.fill")
+                        Image(systemName: "paperplane")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(IrfaaliTheme.accent)
                             .frame(width: 30, height: 30)
-                            .background(IrfaaliTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .background(ObsidianGlass(cornerRadius: 9))
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(preferences.text(ar: "المطور والمالك", en: "Developer and owner"))
@@ -97,7 +95,7 @@ struct SettingsView: View {
                 NavigationLink {
                     AboutView()
                 } label: {
-                    settingLabel(icon: "info.circle.fill", ar: "عن ارفعلي", en: "About Irfaali")
+                    settingLabel(icon: "info.circle", ar: "عن ارفعلي", en: "About Irfaali")
                 }
             } header: {
                 sectionHeader(ar: "حول التطبيق", en: "About")
@@ -144,7 +142,7 @@ struct SettingsView: View {
     private func sectionHeader(ar: String, en: String) -> some View {
         Text(preferences.text(ar: ar, en: en))
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(IrfaaliTheme.accent)
+            .foregroundStyle(IrfaaliTheme.silver)
     }
 
     private func settingLabel(icon: String, ar: String, en: String) -> some View {
@@ -178,7 +176,7 @@ struct SettingsView: View {
                         lineWidth: selected ? 1.5 : 1
                     )
             }
-            .shadow(color: selected ? IrfaaliTheme.accent.opacity(0.20) : .clear, radius: 5)
+            .shadow(color: selected ? IrfaaliTheme.accent.opacity(0.16) : .clear, radius: 4)
             .frame(width: 28, height: 28)
     }
 
