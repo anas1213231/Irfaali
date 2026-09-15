@@ -25,7 +25,7 @@ struct StudioView: View {
             ThemeBackground()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 30) {
+                VStack(alignment: .leading, spacing: model.info == nil ? 34 : 24) {
                     if model.info == nil {
                         studioIntro
                         importPortal
@@ -38,7 +38,7 @@ struct StudioView: View {
 
                     if let info = model.info {
                         previewStage(info)
-                        processingCard(info)
+                        processingDeck(info)
                         sourceDisclosure(info)
                     }
 
@@ -57,11 +57,11 @@ struct StudioView: View {
                             .transition(.opacity)
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, model.info == nil ? 18 : 8)
-                .padding(.bottom, 44)
+                .padding(.horizontal, 20)
+                .padding(.top, model.info == nil ? 24 : 10)
+                .padding(.bottom, 52)
                 .opacity(hasAppeared ? 1 : 0)
-                .offset(y: hasAppeared ? 0 : 8)
+                .offset(y: hasAppeared ? 0 : 6)
             }
             .scrollIndicators(.hidden)
         }
@@ -74,13 +74,14 @@ struct StudioView: View {
                     Image("OfficialLogo")
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 30)
+                        .frame(height: 28)
                         .accessibilityLabel(AppBranding.appName)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
                     PhotosPicker(selection: $photoItem, matching: .videos) {
                         Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.subheadline.weight(.semibold))
                     }
                     .buttonStyle(VIPPlainButtonStyle())
                     .accessibilityLabel(preferences.text(ar: "تغيير الفيديو", en: "Change video"))
@@ -111,7 +112,7 @@ struct StudioView: View {
         .onAppear {
             guard !hasAppeared else { return }
             if preferences.animationsEnabled && !reduceMotion {
-                withAnimation(.easeOut(duration: 0.28)) {
+                withAnimation(.easeOut(duration: 0.22)) {
                     hasAppeared = true
                 }
             } else {
@@ -156,85 +157,71 @@ struct StudioView: View {
         }
     }
 
+    // MARK: - Opening composition
+
     private var studioIntro: some View {
         VStack(alignment: .leading, spacing: 0) {
             Image("OfficialLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 76, height: 76)
+                .frame(width: 70, height: 70)
                 .accessibilityLabel(AppBranding.appName)
-                .padding(.bottom, 24)
+                .padding(.bottom, 26)
 
             Text(AppBranding.appName)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 8)
 
             Text(preferences.text(ar: "كل لقطة.\nبشكل أفضل.", en: "Every frame.\nRefined."))
-                .font(.system(size: 46, weight: .bold))
-                .tracking(preferences.isArabic ? 0 : -1.7)
+                .font(.system(size: 37, weight: .bold))
+                .tracking(preferences.isArabic ? 0 : -1.2)
+                .lineSpacing(preferences.isArabic ? 3 : 0)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 14)
+                .padding(.bottom, 11)
 
-            Text(
-                preferences.text(
-                    ar: "ارفع فيديو، واضبطه بطريقتك.",
-                    en: "Bring in a video. Make every frame yours."
-                )
-            )
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(.secondary)
+            Text(preferences.text(ar: "ابدأ بالفيديو نفسه.", en: "Start with the video itself."))
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var importPortal: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             PhotosPicker(selection: $photoItem, matching: .videos) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(IrfaaliVisual.electricCyan.opacity(0.10))
-                            .frame(width: 54, height: 54)
+                ZStack {
+                    ImportGateMarks()
 
-                        Circle()
-                            .stroke(IrfaaliVisual.electricCyan.opacity(0.42), lineWidth: 0.8)
-                            .frame(width: 54, height: 54)
-
+                    VStack(spacing: 13) {
                         Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.system(size: 19, weight: .semibold))
                             .foregroundStyle(IrfaaliVisual.electricCyan)
+
+                        VStack(spacing: 3) {
+                            Text(preferences.text(ar: "اختر فيديو", en: "Choose a video"))
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+
+                            Text(preferences.text(ar: "من مكتبة الصور", en: "From your photo library"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(preferences.text(ar: "ارفع فيديو", en: "Bring in a video"))
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white)
-
-                        Text(preferences.text(ar: "من مكتبة الصور", en: "From your photo library"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 8)
-
-                    Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.82))
                 }
-                .padding(.horizontal, 18)
-                .frame(maxWidth: .infinity, minHeight: 96)
+                .frame(maxWidth: .infinity, minHeight: 132)
             }
             .buttonStyle(ImportPortalButtonStyle())
 
             Button { showFileImporter = true } label: {
-                Label(
-                    preferences.text(ar: "أو اختره من الملفات", en: "Or choose from Files"),
-                    systemImage: "folder"
-                )
-                .font(.subheadline.weight(.semibold))
+                HStack(spacing: 7) {
+                    Image(systemName: "folder")
+                        .font(.caption.weight(.semibold))
+                    Text(preferences.text(ar: "اختيار من الملفات", en: "Choose from Files"))
+                        .font(.caption.weight(.semibold))
+                }
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(VIPPlainButtonStyle())
         }
@@ -242,79 +229,31 @@ struct StudioView: View {
     }
 
     private var analyzingPanel: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             IrfaaliMiniActivity()
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(preferences.text(ar: "نقرأ الفيديو", en: "Reading your video"))
-                    .font(.headline.weight(.bold))
+                Text(preferences.text(ar: "قراءة الفيديو", en: "Reading video"))
+                    .font(.subheadline.weight(.semibold))
 
                 Text(preferences.text(ar: "الدقة · الفريمات · الترميز · الصوت", en: "Resolution · frame rate · codec · audio"))
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 16)
-        .overlay(alignment: .bottom) {
-            IrfaaliHairline()
-        }
+        .padding(.vertical, 14)
+        .overlay(alignment: .bottom) { IrfaaliHairline() }
     }
 
+    // MARK: - Media stage
+
     private func previewStage(_ info: VideoAssetInfo) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(preferences.text(ar: "الفيديو", en: "Video"))
-                        .font(.system(size: 24, weight: .bold))
-                    Text("\(info.width)×\(info.height) · \(IrfaaliFormatters.fps(info.sourceFPS))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if model.lastOutcome != nil {
-                    Button {
-                        previewExport.toggle()
-                    } label: {
-                        Text(
-                            preferences.text(
-                                ar: previewExport ? "عرض التعديل" : "عرض الناتج",
-                                en: previewExport ? "Adjustments" : "Export"
-                            )
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(previewExport ? IrfaaliVisual.electricCyan : .white)
-                        .padding(.horizontal, 10)
-                        .frame(minHeight: 34)
-                        .background(IrfaaliVisual.quietFill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-                    .buttonStyle(VIPPlainButtonStyle())
-                }
-            }
-
+        VStack(alignment: .leading, spacing: 12) {
             Group {
                 if model.isProcessing {
-                    ZStack {
-                        VideoThumbnailView(url: info.url, isAvailable: true)
-                            .overlay(Color.black.opacity(0.70))
-
-                        VStack(spacing: 10) {
-                            IrfaaliProcessingGlyph(progress: model.progress)
-
-                            Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-
-                            Text("\(Int(model.progress * 100))%")
-                                .font(.system(size: 16, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .contentTransition(.numericText())
-                        }
-                        .padding(.vertical, 12)
-                    }
+                    processingMediaStage(info)
                 } else {
                     VideoCanvas(
                         url: previewExport ? (model.lastOutcome?.url ?? info.url) : info.url,
@@ -322,46 +261,123 @@ struct StudioView: View {
                     )
                 }
             }
-            .frame(height: info.height > info.width ? 360 : 238)
+            .frame(height: info.height > info.width ? 410 : 252)
             .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.white.opacity(0.11), lineWidth: 0.5)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(alignment: .bottomLeading) {
+                if !model.isProcessing {
+                    mediaMetadata(info)
+                }
             }
-            .overlay(alignment: .topLeading) {
+
+            if !previewExport && !model.isProcessing {
+                compareControl
+            } else if model.lastOutcome != nil && !model.isProcessing {
+                Button {
+                    previewExport.toggle()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(preferences.text(ar: previewExport ? "العودة للتعديل" : "عرض الناتج", en: previewExport ? "Back to adjustments" : "View export"))
+                            .font(.caption.weight(.semibold))
+                        Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(minHeight: 36)
+                }
+                .buttonStyle(VIPPlainButtonStyle())
+            }
+        }
+    }
+
+    private func processingMediaStage(_ info: VideoAssetInfo) -> some View {
+        ZStack {
+            VideoThumbnailView(url: info.url, isAvailable: true)
+
+            Color.black.opacity(0.20)
+
+            GeometryReader { proxy in
+                let progress = min(max(model.progress, 0), 1)
+                let resolvedWidth = proxy.size.width * progress
+
+                HStack(spacing: 0) {
+                    Color.clear
+                        .frame(width: resolvedWidth)
+                    Color.black.opacity(0.42)
+                }
+
+                Rectangle()
+                    .fill(IrfaaliVisual.electricCyan.opacity(0.62))
+                    .frame(width: 1)
+                    .offset(x: max(0, min(proxy.size.width - 1, resolvedWidth)))
+            }
+
+            IrfaaliProcessingGlyph(progress: model.progress)
+
+            VStack {
+                Spacer()
+
+                HStack(alignment: .lastTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
+                            .font(.subheadline.weight(.semibold))
+                        Text(processingStageCaption)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text("\(Int(model.progress * 100))%")
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.76))
+                        .contentTransition(.numericText())
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 14)
+            }
+        }
+    }
+
+    private func mediaMetadata(_ info: VideoAssetInfo) -> some View {
+        LinearGradient(
+            colors: [.clear, Color.black.opacity(0.76)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: 86)
+        .overlay(alignment: .bottomLeading) {
+            HStack(alignment: .lastTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(info.fileName)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text("\(info.width)×\(info.height) · \(IrfaaliFormatters.fps(info.sourceFPS))")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.62))
+                }
+
+                Spacer()
+
                 Text(
                     preferences.text(
                         ar: previewExport ? "الناتج" : (showOriginal ? "الأصل" : "التعديل"),
                         en: previewExport ? "EXPORT" : (showOriginal ? "ORIGINAL" : "ADJUSTED")
                     )
                 )
-                .font(.caption2.weight(.bold))
-                .tracking(preferences.isArabic ? 0 : 1.0)
-                .foregroundStyle(.white.opacity(0.90))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.66), in: Capsule())
-                .padding(12)
+                .font(.caption2.weight(.semibold))
+                .tracking(preferences.isArabic ? 0 : 0.8)
+                .foregroundStyle(.white.opacity(0.72))
             }
-
-            if !previewExport && !model.isProcessing {
-                compareControl
-
-                Text(
-                    preferences.text(
-                        ar: "معاينة اللون والتفاصيل مباشرة.",
-                        en: "Preview color and detail changes live."
-                    )
-                )
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
         }
+        .allowsHitTesting(false)
     }
 
     private var compareControl: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 22) {
             compareButton(
                 title: preferences.text(ar: "الأصل", en: "Original"),
                 selected: showOriginal
@@ -375,12 +391,8 @@ struct StudioView: View {
             ) {
                 showOriginal = false
             }
-        }
-        .padding(3)
-        .background(IrfaaliVisual.quieterFill, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(IrfaaliVisual.hairline, lineWidth: 0.5)
+
+            Spacer()
         }
         .sensoryFeedback(.selection, trigger: showOriginal) { oldValue, newValue in
             preferences.hapticsEnabled && oldValue != newValue
@@ -389,25 +401,37 @@ struct StudioView: View {
 
     private func compareButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(selected ? .white : .secondary)
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .background(
-                    selected ? Color.white.opacity(0.085) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
+            VStack(spacing: 5) {
+                Text(title)
+                    .font(.caption.weight(selected ? .semibold : .medium))
+                    .foregroundStyle(selected ? .white : .secondary)
+
+                ZStack {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(height: 1)
+
+                    if selected {
+                        Rectangle()
+                            .fill(IrfaaliVisual.electricCyan)
+                            .frame(height: 1)
+                            .matchedGeometryEffect(id: "preview-mode", in: presetSelection)
+                    }
+                }
+            }
         }
         .buttonStyle(VIPPlainButtonStyle())
     }
 
-    private func processingCard(_ info: VideoAssetInfo) -> some View {
-        VStack(alignment: .leading, spacing: 26) {
-            HStack(alignment: .center) {
-                IrfaaliSectionHeading(
-                    title: preferences.text(ar: "جهّز النتيجة", en: "Build the result"),
-                    detail: preferences.text(ar: "الأهم أولًا. والباقي وقت ما تحتاجه.", en: "The essentials first. Fine-tune only when you need it.")
-                )
+    // MARK: - Precision configuration
+
+    private func processingDeck(_ info: VideoAssetInfo) -> some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(preferences.text(ar: "النتيجة", en: "Output"))
+                    .font(.title3.weight(.semibold))
+
+                Spacer()
 
                 Button {
                     withAnimation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil) {
@@ -415,11 +439,8 @@ struct StudioView: View {
                     }
                 } label: {
                     Text(preferences.text(ar: "موصى به", en: "Recommended"))
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(IrfaaliVisual.electricCyan)
-                        .padding(.horizontal, 10)
-                        .frame(minHeight: 34)
-                        .background(IrfaaliVisual.electricCyan.opacity(0.08), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 }
                 .buttonStyle(VIPPlainButtonStyle())
                 .disabled(model.isProcessing)
@@ -429,7 +450,6 @@ struct StudioView: View {
             frameRateSelector(info)
             codecSelector
             adjustmentDisclosure
-
             outputSummary(info)
 
             let explanation = outputExplanation(info)
@@ -442,7 +462,7 @@ struct StudioView: View {
                         .padding(.top, 8)
                 } label: {
                     Text(preferences.text(ar: "ملاحظات التصدير", en: "Export notes"))
-                        .font(.caption.weight(.semibold))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
                 .tint(.secondary)
@@ -451,77 +471,51 @@ struct StudioView: View {
             if model.isProcessing {
                 processingProgress
             } else {
-                Button {
-                    Task {
-                        if let result = await model.process() {
-                            let finalInfo = model.outputInfo ?? info
-                            let record = ProcessedVideoRecord(
-                                sourceFileName: info.fileName,
-                                outputURL: result.url,
-                                presetName: processingSummary(info),
-                                width: finalInfo.width,
-                                height: finalInfo.height,
-                                fps: finalInfo.sourceFPS,
-                                codec: finalInfo.videoCodec,
-                                duration: finalInfo.duration,
-                                fileSizeBytes: finalInfo.fileSizeBytes,
-                                estimatedBitrate: finalInfo.estimatedBitrate
-                            )
-                            modelContext.insert(record)
-                            try? modelContext.save()
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(preferences.text(ar: "معالجة الفيديو", en: "Process video"))
-                                .font(.headline.weight(.bold))
-                            Text(processingSummary(info))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.white.opacity(0.58))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.72)
-                        }
-
-                        Spacer(minLength: 8)
-
-                        ZStack {
-                            Circle()
-                                .fill(IrfaaliVisual.electricCyan.opacity(0.13))
-                                .frame(width: 42, height: 42)
-                            Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(IrfaaliVisual.electricCyan)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PremiumProcessButtonStyle())
-                .disabled(model.isAnalyzing || model.isProcessing)
+                processCommitAction(info)
             }
         }
     }
 
     private func resolutionSelector(_ info: VideoAssetInfo) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            selectorHeader(
-                index: "01",
-                title: preferences.text(ar: "الجودة", en: "Quality"),
+        VStack(alignment: .leading, spacing: 11) {
+            controlHeading(
+                preferences.text(ar: "الجودة", en: "Quality"),
                 value: model.settings.resolution.title(isArabic: preferences.isArabic)
             )
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(VideoProcessingSettings.supportedResolutions(for: info)) { resolution in
-                        selectionButton(
-                            title: resolution.title(isArabic: preferences.isArabic),
-                            selected: model.settings.resolution == resolution
-                        ) {
-                            model.settings.resolution = resolution
+            HStack(spacing: 0) {
+                ForEach(VideoProcessingSettings.supportedResolutions(for: info)) { resolution in
+                    let selected = model.settings.resolution == resolution
+
+                    Button {
+                        model.settings.resolution = resolution
+                    } label: {
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(resolution.title(isArabic: preferences.isArabic))
+                                .font(.subheadline.monospacedDigit().weight(selected ? .bold : .medium))
+                                .foregroundStyle(selected ? .white : .secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color.white.opacity(0.10))
+                                    .frame(height: 0.5)
+
+                                if selected {
+                                    Rectangle()
+                                        .fill(IrfaaliVisual.electricCyan)
+                                        .frame(width: 22, height: 1)
+                                        .matchedGeometryEffect(id: "resolution-selection", in: presetSelection)
+                                }
+                            }
                         }
+                        .padding(.trailing, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(VIPPlainButtonStyle())
                 }
-                .padding(.horizontal, 1)
             }
         }
         .disabled(model.isProcessing)
@@ -532,24 +526,46 @@ struct StudioView: View {
 
     private func frameRateSelector(_ info: VideoAssetInfo) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            selectorHeader(
-                index: "02",
-                title: preferences.text(ar: "الفريمات", en: "Frame rate"),
+            controlHeading(
+                preferences.text(ar: "الحركة", en: "Frame rate"),
                 value: model.settings.frameRate.title(isArabic: preferences.isArabic)
             )
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+            ZStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.10))
+                    .frame(height: 0.5)
+                    .padding(.horizontal, 20)
+
+                HStack(spacing: 0) {
                     ForEach(VideoProcessingSettings.supportedFrameRates(for: info)) { frameRate in
-                        selectionButton(
-                            title: frameRate.title(isArabic: preferences.isArabic),
-                            selected: model.settings.frameRate == frameRate
-                        ) {
+                        let selected = model.settings.frameRate == frameRate
+
+                        Button {
                             model.settings.frameRate = frameRate
+                        } label: {
+                            VStack(spacing: 7) {
+                                Rectangle()
+                                    .fill(selected ? IrfaaliVisual.electricCyan : Color.white.opacity(0.28))
+                                    .frame(width: selected ? 2 : 1, height: selected ? 16 : 9)
+                                    .matchedGeometryEffect(
+                                        id: selected ? "fps-selection" : "fps-\(frameRate.id)",
+                                        in: presetSelection,
+                                        isSource: true
+                                    )
+
+                                Text(frameRate.title(isArabic: preferences.isArabic))
+                                    .font(.caption.monospacedDigit().weight(selected ? .bold : .medium))
+                                    .foregroundStyle(selected ? .white : .secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.72)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(VIPPlainButtonStyle())
                     }
                 }
-                .padding(.horizontal, 1)
             }
         }
         .disabled(model.isProcessing)
@@ -559,23 +575,42 @@ struct StudioView: View {
     }
 
     private var codecSelector: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            selectorHeader(
-                index: "03",
-                title: preferences.text(ar: "الترميز", en: "Encoding"),
-                value: model.settings.codec.title(isArabic: preferences.isArabic)
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            Text(preferences.text(ar: "الترميز", en: "Encoding"))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tertiary)
 
-            HStack(spacing: 8) {
+            Menu {
                 ForEach(VideoProcessingSettings.Codec.allCases) { codec in
-                    selectionButton(
-                        title: codec.title(isArabic: preferences.isArabic),
-                        selected: model.settings.codec == codec
-                    ) {
+                    Button {
                         model.settings.codec = codec
+                    } label: {
+                        Label(
+                            codec.title(isArabic: preferences.isArabic),
+                            systemImage: model.settings.codec == codec ? "checkmark" : ""
+                        )
                     }
                 }
+            } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(model.settings.codec.title(isArabic: preferences.isArabic))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    Text(preferences.text(ar: "متقدم", en: "Advanced"))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.30))
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(VIPPlainButtonStyle())
         }
         .disabled(model.isProcessing)
         .sensoryFeedback(.selection, trigger: model.settings.codec.id) { oldValue, newValue in
@@ -583,46 +618,19 @@ struct StudioView: View {
         }
     }
 
-    private func selectorHeader(index: String, title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(index)
-                .font(.caption2.monospacedDigit().weight(.bold))
-                .foregroundStyle(IrfaaliVisual.electricCyan)
-
+    private func controlHeading(_ title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.headline.weight(.bold))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tertiary)
 
             Spacer()
 
             Text(value)
-                .font(.caption.weight(.semibold))
+                .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-    }
-
-    private func selectionButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(selected ? .bold : .semibold))
-                .foregroundStyle(selected ? .white : .secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-                .padding(.horizontal, 15)
-                .frame(minWidth: 72, minHeight: 42)
-                .background {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .fill(selected ? IrfaaliVisual.electricCyan.opacity(0.10) : IrfaaliVisual.quieterFill)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                        .stroke(
-                            selected ? IrfaaliVisual.electricCyan.opacity(0.42) : IrfaaliVisual.hairline,
-                            lineWidth: selected ? 0.9 : 0.5
-                        )
-                }
-        }
-        .buttonStyle(VIPPlainButtonStyle())
     }
 
     private var adjustmentDisclosure: some View {
@@ -630,14 +638,11 @@ struct StudioView: View {
             adjustmentPanel
                 .padding(.top, 18)
         } label: {
-            HStack(spacing: 12) {
-                Text("04")
-                    .font(.caption2.monospacedDigit().weight(.bold))
-                    .foregroundStyle(IrfaaliVisual.electricCyan)
-
+            HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(preferences.text(ar: "تحسين الصورة", en: "Enhancement"))
-                        .font(.headline.weight(.bold))
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white)
                     Text(model.enhancement.mode.title(isArabic: preferences.isArabic))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -645,36 +650,33 @@ struct StudioView: View {
 
                 Spacer()
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 7)
         }
         .tint(.secondary)
-        .overlay(alignment: .top) {
-            IrfaaliHairline()
-                .offset(y: -12)
-        }
+        .overlay(alignment: .top) { IrfaaliHairline() }
     }
 
     private var adjustmentPanel: some View {
         VStack(alignment: .leading, spacing: 22) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 20) {
                     ForEach(VideoEnhancementSettings.Mode.allCases.filter { $0 != .custom }) { mode in
+                        let selected = model.enhancement.mode == mode
+
                         Button {
                             model.applyEnhancementMode(mode)
                             showOriginal = false
                             previewExport = false
                         } label: {
-                            VStack(spacing: 7) {
+                            VStack(spacing: 6) {
                                 Text(mode.title(isArabic: preferences.isArabic))
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(model.enhancement.mode == mode ? .white : .secondary)
+                                    .font(.caption.weight(selected ? .semibold : .medium))
+                                    .foregroundStyle(selected ? .white : .secondary)
 
-                                Capsule()
-                                    .fill(model.enhancement.mode == mode ? IrfaaliVisual.electricCyan : Color.clear)
-                                    .frame(width: 24, height: 2)
+                                Rectangle()
+                                    .fill(selected ? IrfaaliVisual.electricCyan : Color.clear)
+                                    .frame(height: 1)
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
                         }
                         .buttonStyle(VIPPlainButtonStyle())
                     }
@@ -697,15 +699,10 @@ struct StudioView: View {
             enhancementSlider(icon: "scope", ar: "الحدة", en: "Sharpening", keyPath: \VideoEnhancementSettings.sharpening)
             enhancementSlider(icon: "circle.lefthalf.filled", ar: "حيوية اللون", en: "Color Boost", keyPath: \VideoEnhancementSettings.colorBoost)
 
-            Text(
-                preferences.text(
-                    ar: "خفيف أحسن. خل الصورة طبيعية.",
-                    en: "Keep it light for a natural result."
-                )
-            )
-            .font(.caption)
-            .foregroundStyle(.tertiary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(preferences.text(ar: "خفيف أحسن. خل الصورة طبيعية.", en: "Keep it light for a natural result."))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -718,17 +715,22 @@ struct StudioView: View {
     ) -> some View {
         let value = model.enhancement[keyPath: keyPath]
 
-        return VStack(spacing: 10) {
+        return VStack(spacing: 8) {
             HStack {
-                Label(preferences.text(ar: ar, en: en), systemImage: icon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 7) {
+                    Image(systemName: icon)
+                        .font(.caption2.weight(.semibold))
+                        .frame(width: 14)
+                    Text(preferences.text(ar: ar, en: en))
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
 
                 Spacer()
 
                 Text("\(Int((value * 100).rounded()))%")
-                    .font(.caption.monospacedDigit().weight(.bold))
-                    .foregroundStyle(.white)
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.76))
             }
 
             PrecisionSlider(
@@ -746,124 +748,19 @@ struct StudioView: View {
         }
     }
 
-    private func sourceDisclosure(_ info: VideoAssetInfo) -> some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: 20) {
-                sourceCard(info)
-                compactSourceReplacement
-            }
-            .padding(.top, 18)
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(preferences.text(ar: "معلومات المصدر", en: "Source information"))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    Text(info.fileName)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-            }
-            .padding(.vertical, 6)
-        }
-        .tint(.secondary)
-        .overlay(alignment: .top) {
-            IrfaaliHairline()
-                .offset(y: -12)
-        }
-    }
-
-    private func sourceCard(_ info: VideoAssetInfo) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                SourceMetric(
-                    icon: "rectangle.portrait",
-                    title: preferences.text(ar: "الدقة", en: "Resolution"),
-                    value: "\(info.width)×\(info.height)"
-                )
-
-                SourceMetric(
-                    icon: "speedometer",
-                    title: preferences.text(ar: "الفريمات", en: "Frame Rate"),
-                    value: IrfaaliFormatters.fps(info.sourceFPS)
-                )
-            }
-
-            IrfaaliHairline()
-
-            DisclosureGroup(
-                preferences.text(ar: "التفاصيل", en: "Details"),
-                isExpanded: $showSourceDetails
-            ) {
-                VStack(spacing: 11) {
-                    detailRow(icon: "film.stack", title: preferences.text(ar: "الترميز", en: "Video Codec"), value: info.videoCodec)
-                    detailRow(icon: "waveform", title: preferences.text(ar: "البت ريت", en: "Bitrate"), value: IrfaaliFormatters.bitrate(info.estimatedBitrate))
-                    detailRow(icon: "clock", title: preferences.text(ar: "المدة", en: "Duration"), value: IrfaaliFormatters.duration(info.duration))
-                    detailRow(icon: "speaker.wave.2", title: preferences.text(ar: "الصوت", en: "Audio"), value: audioSummary(info))
-                    detailRow(icon: "shippingbox", title: preferences.text(ar: "الحاوية", en: "Container"), value: info.container)
-                }
-                .padding(.top, 12)
-            }
-            .font(.subheadline.weight(.semibold))
-            .tint(.secondary)
-        }
-    }
-
-    private var compactSourceReplacement: some View {
-        HStack(spacing: 10) {
-            PhotosPicker(selection: $photoItem, matching: .videos) {
-                Label(preferences.text(ar: "تغيير", en: "Change"), systemImage: "photo.on.rectangle")
-                    .frame(maxWidth: .infinity, minHeight: 42)
-            }
-            .buttonStyle(PremiumSecondaryButtonStyle())
-
-            Button { showFileImporter = true } label: {
-                Label(preferences.text(ar: "ملفات", en: "Files"), systemImage: "folder")
-                    .frame(maxWidth: .infinity, minHeight: 42)
-            }
-            .buttonStyle(PremiumSecondaryButtonStyle())
-        }
-        .disabled(model.isAnalyzing || model.isProcessing)
-    }
-
-    private func detailRow(icon: String, title: String, value: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 22)
-
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Spacer(minLength: 8)
-
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-    }
-
     private func outputSummary(_ info: VideoAssetInfo) -> some View {
         let size = model.settings.targetSize(for: info)
         let fps = model.settings.frameRate.requestedFPS ?? info.sourceFPS
         let codec = model.settings.codec.title(isArabic: preferences.isArabic)
 
-        return HStack(alignment: .center, spacing: 14) {
+        return HStack(alignment: .lastTextBaseline, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(preferences.text(ar: "الناتج", en: "Output"))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(IrfaaliVisual.electricCyan)
+                Text(preferences.text(ar: "المخرج", en: "Target"))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.tertiary)
 
                 Text("\(Int(size.width))×\(Int(size.height))")
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
+                    .font(.system(size: 25, weight: .semibold, design: .default))
                     .monospacedDigit()
 
                 Text("\(IrfaaliFormatters.fps(fps)) · \(codec)")
@@ -873,62 +770,215 @@ struct StudioView: View {
 
             Spacer()
 
-            Image(systemName: "checkmark.seal")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.78))
+            Rectangle()
+                .fill(IrfaaliVisual.electricCyan)
+                .frame(width: 18, height: 1)
+                .padding(.bottom, 4)
         }
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) {
-            IrfaaliHairline()
-                .offset(y: -12)
+        .padding(.top, 4)
+        .overlay(alignment: .top) { IrfaaliHairline() }
+    }
+
+    private func processCommitAction(_ info: VideoAssetInfo) -> some View {
+        Button {
+            Task {
+                if let result = await model.process() {
+                    let finalInfo = model.outputInfo ?? info
+                    let record = ProcessedVideoRecord(
+                        sourceFileName: info.fileName,
+                        outputURL: result.url,
+                        presetName: processingSummary(info),
+                        width: finalInfo.width,
+                        height: finalInfo.height,
+                        fps: finalInfo.sourceFPS,
+                        codec: finalInfo.videoCodec,
+                        duration: finalInfo.duration,
+                        fileSizeBytes: finalInfo.fileSizeBytes,
+                        estimatedBitrate: finalInfo.estimatedBitrate
+                    )
+                    modelContext.insert(record)
+                    try? modelContext.save()
+                }
+            }
+        } label: {
+            VStack(spacing: 0) {
+                IrfaaliHairline()
+
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(preferences.text(ar: "معالجة الفيديو", en: "Process video"))
+                            .font(.title3.weight(.semibold))
+
+                        Text(processingSummary(info))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.70)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
+                        .font(.headline.weight(.medium))
+                        .foregroundStyle(IrfaaliVisual.electricCyan)
+                }
+                .frame(minHeight: 76)
+
+                Rectangle()
+                    .fill(IrfaaliVisual.electricCyan.opacity(0.72))
+                    .frame(height: 1)
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PremiumProcessButtonStyle())
+        .disabled(model.isAnalyzing || model.isProcessing)
     }
 
     private var processingProgress: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(preferences.text(ar: model.processingStageTextArabic, en: model.processingStageTextEnglish))
-                        .font(.headline.weight(.bold))
+                        .font(.subheadline.weight(.semibold))
                     Text(processingStageCaption)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 Text("\(Int(model.progress * 100))%")
-                    .font(.headline.monospacedDigit().weight(.bold))
-                    .foregroundStyle(IrfaaliVisual.electricCyan)
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.76))
                     .contentTransition(.numericText())
             }
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.08))
-                    Capsule()
-                        .fill(IrfaaliVisual.energyGradient)
-                        .frame(width: max(3, proxy.size.width * model.progress))
+                    Rectangle()
+                        .fill(Color.white.opacity(0.10))
+                        .frame(height: 0.5)
+                    Rectangle()
+                        .fill(IrfaaliVisual.electricCyan)
+                        .frame(width: max(1, proxy.size.width * model.progress), height: 1)
                 }
             }
-            .frame(height: 3)
+            .frame(height: 1)
 
             if model.canCancelProcessing {
                 Button {
                     model.cancelProcessing()
                 } label: {
-                    Label(
-                        preferences.text(ar: "إلغاء المعالجة", en: "Cancel Processing"),
-                        systemImage: "xmark"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                    Text(preferences.text(ar: "إلغاء المعالجة", en: "Cancel processing"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.red)
+                        .frame(minHeight: 40)
                 }
-                .buttonStyle(PremiumDestructiveButtonStyle())
+                .buttonStyle(VIPPlainButtonStyle())
             }
         }
-        .padding(.top, 2)
     }
+
+    // MARK: - Source details
+
+    private func sourceDisclosure(_ info: VideoAssetInfo) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 20) {
+                sourceCard(info)
+                compactSourceReplacement
+            }
+            .padding(.top, 18)
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(preferences.text(ar: "معلومات المصدر", en: "Source information"))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Text(info.fileName)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 7)
+        }
+        .tint(.secondary)
+        .overlay(alignment: .top) { IrfaaliHairline() }
+    }
+
+    private func sourceCard(_ info: VideoAssetInfo) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 24) {
+                SourceMetric(
+                    title: preferences.text(ar: "الدقة", en: "Resolution"),
+                    value: "\(info.width)×\(info.height)"
+                )
+
+                SourceMetric(
+                    title: preferences.text(ar: "الفريمات", en: "Frame rate"),
+                    value: IrfaaliFormatters.fps(info.sourceFPS)
+                )
+            }
+
+            DisclosureGroup(
+                preferences.text(ar: "التفاصيل", en: "Details"),
+                isExpanded: $showSourceDetails
+            ) {
+                VStack(spacing: 10) {
+                    detailRow(title: preferences.text(ar: "الترميز", en: "Video Codec"), value: info.videoCodec)
+                    detailRow(title: preferences.text(ar: "البت ريت", en: "Bitrate"), value: IrfaaliFormatters.bitrate(info.estimatedBitrate))
+                    detailRow(title: preferences.text(ar: "المدة", en: "Duration"), value: IrfaaliFormatters.duration(info.duration))
+                    detailRow(title: preferences.text(ar: "الصوت", en: "Audio"), value: audioSummary(info))
+                    detailRow(title: preferences.text(ar: "الحاوية", en: "Container"), value: info.container)
+                }
+                .padding(.top, 12)
+            }
+            .font(.caption.weight(.medium))
+            .tint(.secondary)
+        }
+    }
+
+    private var compactSourceReplacement: some View {
+        HStack(spacing: 18) {
+            PhotosPicker(selection: $photoItem, matching: .videos) {
+                Label(preferences.text(ar: "تغيير", en: "Change"), systemImage: "photo.on.rectangle")
+                    .font(.caption.weight(.semibold))
+                    .frame(minHeight: 40)
+            }
+            .buttonStyle(VIPPlainButtonStyle())
+
+            Button { showFileImporter = true } label: {
+                Label(preferences.text(ar: "ملفات", en: "Files"), systemImage: "folder")
+                    .font(.caption.weight(.semibold))
+                    .frame(minHeight: 40)
+            }
+            .buttonStyle(VIPPlainButtonStyle())
+
+            Spacer()
+        }
+        .foregroundStyle(.secondary)
+        .disabled(model.isAnalyzing || model.isProcessing)
+    }
+
+    private func detailRow(title: String, value: String) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 8)
+
+            Text(value)
+                .font(.caption.monospacedDigit().weight(.medium))
+                .foregroundStyle(.white.opacity(0.82))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    // MARK: - State copy and outcome
 
     private var processingStageCaption: String {
         switch model.processingStage {
@@ -941,9 +991,9 @@ struct StudioView: View {
         case .generatingFrames:
             return preferences.text(ar: "معالجة الإطارات", en: "Processing frames")
         case .enhancing:
-            return preferences.text(ar: "تحسين التفاصيل", en: "Refining detail")
+            return preferences.text(ar: "استعادة التفاصيل", en: "Restoring detail")
         case .verifying:
-            return preferences.text(ar: "تجهيز النتيجة", en: "Finalizing")
+            return preferences.text(ar: "التجهيز", en: "Finalizing")
         case .complete:
             return preferences.text(ar: "جاهز", en: "Ready")
         }
@@ -1015,27 +1065,26 @@ struct StudioView: View {
         }
 
         return VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(IrfaaliVisual.electricCyan.opacity(0.10))
-                        .frame(width: 42, height: 42)
-                    Image(systemName: "checkmark")
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(IrfaaliVisual.electricCyan)
-                }
+            IrfaaliHairline()
 
-                VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(preferences.text(ar: "الفيديو جاهز", en: "Video ready"))
-                        .font(.title3.weight(.bold))
+                        .font(.title3.weight(.semibold))
                     Text(fpsText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Spacer()
+
+                Image(systemName: "checkmark")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(IrfaaliVisual.electricCyan)
             }
 
             if let source = model.info, let output {
-                HStack(spacing: 10) {
+                HStack(spacing: 18) {
                     ComparisonColumn(
                         title: preferences.text(ar: "قبل", en: "Before"),
                         resolution: "\(source.width)×\(source.height)",
@@ -1043,9 +1092,9 @@ struct StudioView: View {
                         codec: source.videoCodec
                     )
 
-                    Image(systemName: preferences.isArabic ? "arrow.left" : "arrow.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.tertiary)
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 0.5, height: 54)
 
                     ComparisonColumn(
                         title: preferences.text(ar: "بعد", en: "After"),
@@ -1056,7 +1105,7 @@ struct StudioView: View {
                 }
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Button {
                     Task { await model.saveOutputToPhotos() }
                 } label: {
@@ -1067,7 +1116,7 @@ struct StudioView: View {
 
                 ShareLink(item: outcome.url) {
                     Image(systemName: "square.and.arrow.up")
-                        .frame(width: 48, height: 48)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(PremiumSecondaryButtonStyle())
             }
@@ -1078,10 +1127,7 @@ struct StudioView: View {
                     .foregroundStyle(.orange)
             }
         }
-        .padding(.top, 22)
-        .overlay(alignment: .top) {
-            IrfaaliHairline()
-        }
+        .padding(.top, 4)
     }
 
     @ViewBuilder
@@ -1091,11 +1137,8 @@ struct StudioView: View {
             Label(preferences.text(ar: "حفظ في الصور", en: "Save to Photos"), systemImage: "square.and.arrow.down")
                 .frame(maxWidth: .infinity)
         case .saving:
-            HStack {
-                ProgressView()
-                Text(preferences.text(ar: "جارٍ الحفظ…", en: "Saving…"))
-            }
-            .frame(maxWidth: .infinity)
+            Text(preferences.text(ar: "جارٍ الحفظ…", en: "Saving…"))
+                .frame(maxWidth: .infinity)
         case .saved:
             Label(preferences.text(ar: "تم الحفظ", en: "Saved"), systemImage: "checkmark")
                 .frame(maxWidth: .infinity)
@@ -1121,7 +1164,7 @@ struct StudioView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .frame(width: 22)
+                .frame(width: 20)
 
             Text(message)
                 .font(.subheadline)
@@ -1130,29 +1173,62 @@ struct StudioView: View {
         }
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) {
-            IrfaaliHairline()
+        .overlay(alignment: .top) { IrfaaliHairline() }
+    }
+}
+
+private struct ImportGateMarks: View {
+    var body: some View {
+        ZStack {
+            VStack {
+                HStack {
+                    corner(horizontal: .leading, vertical: .top)
+                    Spacer()
+                    corner(horizontal: .trailing, vertical: .top)
+                }
+                Spacer()
+                HStack {
+                    corner(horizontal: .leading, vertical: .bottom)
+                    Spacer()
+                    corner(horizontal: .trailing, vertical: .bottom)
+                }
+            }
+
+            Rectangle()
+                .fill(Color.white.opacity(0.055))
+                .frame(height: 0.5)
+                .padding(.horizontal, 28)
         }
+        .padding(2)
+        .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private func corner(horizontal: HorizontalAlignment, vertical: VerticalAlignment) -> some View {
+        ZStack(alignment: Alignment(horizontal: horizontal, vertical: vertical)) {
+            Rectangle()
+                .fill(Color.white.opacity(0.22))
+                .frame(width: 30, height: 0.5)
+            Rectangle()
+                .fill(Color.white.opacity(0.22))
+                .frame(width: 0.5, height: 22)
+        }
+        .frame(width: 30, height: 22, alignment: Alignment(horizontal: horizontal, vertical: vertical))
     }
 }
 
 private struct SourceMetric: View {
-    let icon: String
     let title: String
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Image(systemName: icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
 
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -1168,27 +1244,22 @@ private struct ComparisonColumn: View {
     let codec: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption2.weight(.bold))
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.tertiary)
 
             Text(resolution)
-                .font(.subheadline.monospacedDigit().weight(.bold))
+                .font(.subheadline.monospacedDigit().weight(.semibold))
                 .foregroundStyle(.white)
 
-            Text(fps)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-
-            Text(codec)
-                .font(.caption2)
+            Text("\(fps) · \(codec)")
+                .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.76)
+                .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
     }
 }
 
@@ -1208,33 +1279,29 @@ private struct PrecisionSlider: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let thumbSize: CGFloat = 18
-            let usableWidth = max(1, proxy.size.width - thumbSize)
+            let handleWidth: CGFloat = 2
+            let usableWidth = max(1, proxy.size.width - handleWidth)
             let displayProgress = layoutDirection == .rightToLeft ? 1 - normalized : normalized
-            let thumbX = CGFloat(displayProgress) * usableWidth
+            let handleX = CGFloat(displayProgress) * usableWidth
 
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.09))
-                    .frame(height: 2)
+                Rectangle()
+                    .fill(Color.white.opacity(isDragging ? 0.18 : 0.10))
+                    .frame(height: 0.5)
 
-                Capsule()
-                    .fill(IrfaaliVisual.energyGradient)
-                    .frame(width: max(2, thumbX + thumbSize / 2), height: 3)
-
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: thumbSize, height: thumbSize)
-                    .overlay {
-                        Circle()
-                            .stroke(IrfaaliVisual.electricCyan.opacity(isDragging ? 0.65 : 0.20), lineWidth: 1)
+                HStack {
+                    ForEach(0..<9, id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(isDragging ? 0.22 : 0.10))
+                            .frame(width: 0.5, height: 5)
+                        if _ != 8 { Spacer() }
                     }
-                    .shadow(
-                        color: IrfaaliVisual.electricCyan.opacity(isDragging ? 0.18 : 0),
-                        radius: isDragging ? 8 : 0
-                    )
-                    .scaleEffect(isDragging ? 1.13 : 1)
-                    .offset(x: thumbX)
+                }
+
+                Rectangle()
+                    .fill(isDragging ? IrfaaliVisual.electricCyan : Color.white.opacity(0.76))
+                    .frame(width: handleWidth, height: isDragging ? 20 : 14)
+                    .offset(x: handleX)
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
@@ -1242,7 +1309,8 @@ private struct PrecisionSlider: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
                         isDragging = true
-                        let display = Double(min(max(gesture.location.x / max(proxy.size.width, 1), 0), 1))
+                        let raw = Double((gesture.location.x - handleWidth / 2) / usableWidth)
+                        let display = min(max(raw, 0), 1)
                         let logical = layoutDirection == .rightToLeft ? 1 - display : display
                         value = range.lowerBound + logical * (range.upperBound - range.lowerBound)
                     }
@@ -1251,7 +1319,7 @@ private struct PrecisionSlider: View {
                     }
             )
         }
-        .frame(height: 30)
+        .frame(height: 28)
         .animation(.easeInOut(duration: 0.10), value: isDragging)
         .sensoryFeedback(.selection, trigger: Int((normalized * 50).rounded())) { oldValue, newValue in
             preferences.hapticsEnabled && isDragging && oldValue != newValue
@@ -1278,26 +1346,8 @@ private struct ImportPortalButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(configuration.isPressed ? 0.065 : 0.043))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                IrfaaliVisual.electricCyan.opacity(configuration.isPressed ? 0.55 : 0.34),
-                                Color.white.opacity(0.12),
-                                IrfaaliVisual.deepViolet.opacity(0.18)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.8
-                    )
-            }
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.76 : 1)
+            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
             .animation(
                 preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil,
                 value: configuration.isPressed
@@ -1314,14 +1364,10 @@ private struct PremiumPrimaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.bold))
+            .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 14)
-            .frame(minHeight: 48)
-            .background(Color.white.opacity(configuration.isPressed ? 0.12 : 0.08), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
-            }
+            .frame(minHeight: 46)
+            .background(Color.white.opacity(configuration.isPressed ? 0.13 : 0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
             .animation(
@@ -1340,48 +1386,7 @@ private struct PremiumProcessButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal, 17)
-            .frame(minHeight: 70)
-            .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.white.opacity(configuration.isPressed ? 0.075 : 0.052))
-
-                    LinearGradient(
-                        colors: [
-                            IrfaaliVisual.electricCyan.opacity(configuration.isPressed ? 0.12 : 0.08),
-                            .clear,
-                            IrfaaliVisual.deepViolet.opacity(0.045)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                IrfaaliVisual.electricCyan.opacity(0.48),
-                                Color.white.opacity(0.12),
-                                IrfaaliVisual.deepViolet.opacity(0.20)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 0.9
-                    )
-            }
-            .overlay(alignment: .leading) {
-                Capsule()
-                    .fill(IrfaaliVisual.energyGradient)
-                    .frame(width: 3, height: 36)
-                    .padding(.leading, 8)
-            }
-            .foregroundStyle(.white)
-            .shadow(color: IrfaaliVisual.electricCyan.opacity(0.08), radius: 16, y: 6)
+            .opacity(configuration.isPressed ? 0.82 : 1)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
             .animation(
                 preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil,
@@ -1400,40 +1405,10 @@ private struct PremiumSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 11)
             .frame(minHeight: 44)
-            .background(IrfaaliVisual.quieterFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(configuration.isPressed ? 0.18 : 0.10), lineWidth: 0.5)
-            }
+            .background(Color.white.opacity(configuration.isPressed ? 0.08 : 0.035), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .foregroundStyle(.white)
-            .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
-            .animation(
-                preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil,
-                value: configuration.isPressed
-            )
-            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { oldValue, newValue in
-                preferences.hapticsEnabled && !oldValue && newValue
-            }
-    }
-}
-
-private struct PremiumDestructiveButtonStyle: ButtonStyle {
-    @EnvironmentObject private var preferences: AppPreferences
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .background(Color.red.opacity(configuration.isPressed ? 0.11 : 0.055), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.red.opacity(0.24), lineWidth: 0.5)
-            }
-            .foregroundStyle(.red)
             .scaleEffect(configuration.isPressed && preferences.animationsEnabled && !reduceMotion ? 0.98 : 1)
             .animation(
                 preferences.animationsEnabled && !reduceMotion ? .easeInOut(duration: 0.10) : nil,
