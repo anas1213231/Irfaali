@@ -1,22 +1,27 @@
 import SwiftUI
 
 enum IrfaaliVisual {
-    static let electricCyan = Color(red: 0.25, green: 0.86, blue: 0.98)
-    static let coolBlue = Color(red: 0.20, green: 0.48, blue: 0.92)
-    static let deepViolet = Color(red: 0.38, green: 0.26, blue: 0.72)
-    static let quietFill = Color.white.opacity(0.045)
-    static let quieterFill = Color.white.opacity(0.026)
-    static let hairline = Color.white.opacity(0.105)
-    static let strongHairline = Color.white.opacity(0.18)
+    static let electricCyan = Color(red: 0.30, green: 0.86, blue: 0.96)
+    static let coolBlue = Color(red: 0.26, green: 0.48, blue: 0.84)
+    static let deepViolet = Color(red: 0.34, green: 0.28, blue: 0.56)
 
+    static let graphite = Color(white: 0.075)
+    static let obsidian = Color(white: 0.025)
+    static let quietFill = Color.white.opacity(0.040)
+    static let quieterFill = Color.white.opacity(0.022)
+    static let hairline = Color.white.opacity(0.105)
+    static let strongHairline = Color.white.opacity(0.19)
+
+    // Kept as shared compatibility tokens. The redesigned UI uses color as a signal,
+    // not as a decorative surface treatment.
     static let energyGradient = LinearGradient(
-        colors: [electricCyan, coolBlue, deepViolet],
+        colors: [electricCyan, coolBlue],
         startPoint: .leading,
         endPoint: .trailing
     )
 
     static let verticalEnergyGradient = LinearGradient(
-        colors: [electricCyan, coolBlue, deepViolet],
+        colors: [electricCyan, coolBlue],
         startPoint: .top,
         endPoint: .bottom
     )
@@ -27,26 +32,21 @@ struct IrfaaliBackdrop: View {
         ZStack {
             Color.black
 
-            RadialGradient(
-                colors: [
-                    IrfaaliVisual.coolBlue.opacity(0.085),
-                    IrfaaliVisual.deepViolet.opacity(0.026),
-                    .clear
-                ],
-                center: .topLeading,
-                startRadius: 0,
-                endRadius: 430
-            )
-
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.018),
-                    .clear,
-                    Color.black.opacity(0.16)
+                    Color.white.opacity(0.020),
+                    Color.white.opacity(0.006),
+                    Color.clear
                 ],
                 startPoint: .top,
-                endPoint: .bottom
+                endPoint: .center
             )
+
+            Rectangle()
+                .fill(IrfaaliVisual.graphite.opacity(0.22))
+                .frame(height: 1)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 1)
         }
         .ignoresSafeArea()
     }
@@ -59,12 +59,12 @@ struct IrfaaliSectionHeading: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.system(size: 22, weight: .bold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.white)
 
             if let detail, !detail.isEmpty {
                 Text(detail)
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -90,36 +90,33 @@ struct IrfaaliMiniActivity: View {
     @State private var active = false
 
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
-            Capsule()
-                .frame(width: 3, height: active ? 14 : 7)
-            Capsule()
-                .frame(width: 3, height: active ? 8 : 16)
-            Capsule()
-                .frame(width: 3, height: active ? 16 : 9)
-            Capsule()
-                .frame(width: 3, height: active ? 10 : 13)
+        HStack(alignment: .center, spacing: 3) {
+            ForEach(0..<5, id: \.self) { index in
+                Rectangle()
+                    .fill(index == 2 ? IrfaaliVisual.electricCyan : Color.white.opacity(0.48))
+                    .frame(width: 1.5, height: active ? CGFloat(8 + ((index * 5) % 10)) : CGFloat(16 - ((index * 3) % 8)))
+            }
         }
-        .foregroundStyle(IrfaaliVisual.energyGradient)
-        .frame(width: 34, height: 28)
+        .frame(width: 28, height: 24)
         .onAppear {
             guard preferences.animationsEnabled && !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.62).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 0.56).repeatForever(autoreverses: true)) {
                 active = true
             }
         }
     }
 }
 
+/// Irfaali's processing signature: a video frame being reconstructed in time.
+/// No spinner, orbit or decorative HUD; progress resolves displaced temporal slices
+/// into one stable frame while a single scanning line travels through the image.
 struct IrfaaliProcessingGlyph: View {
     let progress: Double
 
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var outerRotation = 0.0
-    @State private var middleRotation = 0.0
-    @State private var innerRotation = 0.0
-    @State private var breathing = false
+    @State private var scanTravel: CGFloat = -44
+    @State private var pulse = false
 
     private var clampedProgress: Double {
         min(max(progress, 0), 1)
@@ -127,115 +124,62 @@ struct IrfaaliProcessingGlyph: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.055), lineWidth: 1)
-                .frame(width: 184, height: 184)
-
-            Circle()
-                .trim(from: 0.04, to: 0.67)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            IrfaaliVisual.electricCyan.opacity(0.22),
-                            IrfaaliVisual.electricCyan,
-                            IrfaaliVisual.coolBlue,
-                            IrfaaliVisual.deepViolet.opacity(0.76),
-                            .clear
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 2.1, lineCap: .round)
-                )
-                .frame(width: 174, height: 174)
-                .rotationEffect(.degrees(outerRotation))
-
-            Circle()
-                .trim(from: 0.18, to: 0.86)
-                .stroke(
-                    AngularGradient(
-                        colors: [
-                            .clear,
-                            Color.white.opacity(0.18),
-                            IrfaaliVisual.coolBlue.opacity(0.74),
-                            .clear
-                        ],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 1.15, lineCap: .round)
-                )
-                .frame(width: 132, height: 132)
-                .rotationEffect(.degrees(middleRotation))
-
-            Circle()
-                .trim(from: 0.08, to: 0.52)
-                .stroke(
-                    IrfaaliVisual.energyGradient,
-                    style: StrokeStyle(lineWidth: 1.55, lineCap: .round)
-                )
-                .frame(width: 96, height: 96)
-                .rotationEffect(.degrees(innerRotation))
-
-            Circle()
-                .fill(IrfaaliVisual.electricCyan)
-                .frame(width: 5, height: 5)
-                .shadow(color: IrfaaliVisual.electricCyan.opacity(0.45), radius: 5)
-                .offset(y: -87)
-                .rotationEffect(.degrees(outerRotation))
-
-            Circle()
-                .fill(IrfaaliVisual.coolBlue.opacity(0.95))
-                .frame(width: 4, height: 4)
-                .offset(y: -66)
-                .rotationEffect(.degrees(middleRotation + 120))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(0.18), lineWidth: 0.65)
+                .frame(width: 178, height: 112)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(Color.black.opacity(0.88))
-                    .frame(width: 66, height: 48)
+                ForEach(0..<9, id: \.self) { index in
+                    let row = CGFloat(index) - 4
+                    let unresolved = CGFloat(1 - clampedProgress)
+                    let direction: CGFloat = index.isMultiple(of: 2) ? 1 : -1
+                    let displacement = direction * unresolved * CGFloat(3 + ((index * 7) % 11))
+                    let rowOpacity = 0.14 + (clampedProgress * 0.38)
 
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .trim(from: 0, to: max(0.035, clampedProgress))
-                    .stroke(
-                        IrfaaliVisual.energyGradient,
-                        style: StrokeStyle(lineWidth: 1.7, lineCap: .round)
-                    )
-                    .frame(width: 66, height: 48)
+                    Rectangle()
+                        .fill(Color.white.opacity(rowOpacity))
+                        .frame(width: 146 - abs(row) * 5, height: index == 4 ? 1.4 : 0.75)
+                        .offset(x: displacement, y: row * 9.3)
+                }
 
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [.clear, IrfaaliVisual.electricCyan.opacity(0.86), .clear],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 42, height: 1.2)
-                    .offset(y: CGFloat(clampedProgress - 0.5) * 28)
+                Rectangle()
+                    .fill(IrfaaliVisual.electricCyan.opacity(pulse ? 0.74 : 0.42))
+                    .frame(width: 148, height: 1)
+                    .offset(y: scanTravel)
 
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 5, height: 5)
-                    .shadow(color: IrfaaliVisual.electricCyan.opacity(0.55), radius: 7)
+                HStack(spacing: 4) {
+                    ForEach(0..<13, id: \.self) { index in
+                        Rectangle()
+                            .fill(index <= Int(clampedProgress * 12) ? Color.white.opacity(0.46) : Color.white.opacity(0.10))
+                            .frame(width: 6, height: 1)
+                    }
+                }
+                .offset(y: 46)
             }
-            .scaleEffect(breathing ? 1.035 : 0.99)
+            .frame(width: 158, height: 92)
+            .clipped()
+
+            GeometryReader { proxy in
+                let x = proxy.size.width * clampedProgress
+                Rectangle()
+                    .fill(IrfaaliVisual.electricCyan.opacity(0.85))
+                    .frame(width: 1, height: 112)
+                    .offset(x: max(0, min(proxy.size.width - 1, x)))
+            }
+            .frame(width: 178, height: 112)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .frame(width: 196, height: 196)
+        .frame(width: 190, height: 124)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Processing")
         .onAppear {
             guard preferences.animationsEnabled && !reduceMotion else { return }
 
-            withAnimation(.linear(duration: 8.6).repeatForever(autoreverses: false)) {
-                outerRotation = 360
+            withAnimation(.linear(duration: 2.35).repeatForever(autoreverses: false)) {
+                scanTravel = 44
             }
-            withAnimation(.linear(duration: 5.4).repeatForever(autoreverses: false)) {
-                middleRotation = -360
-            }
-            withAnimation(.linear(duration: 3.8).repeatForever(autoreverses: false)) {
-                innerRotation = 360
-            }
-            withAnimation(.easeInOut(duration: 1.45).repeatForever(autoreverses: true)) {
-                breathing = true
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                pulse = true
             }
         }
     }
@@ -244,8 +188,8 @@ struct IrfaaliProcessingGlyph: View {
 struct IrfaaliFooterSignature: View {
     var body: some View {
         Text("Designed by AI ✨")
-            .font(.caption2.weight(.medium))
-            .tracking(0.4)
+            .font(.caption2.weight(.regular))
+            .tracking(0.2)
             .foregroundStyle(.tertiary)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 8)
