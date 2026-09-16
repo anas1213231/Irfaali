@@ -64,6 +64,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var sceneCutFallbackFrameCount = 0
     @Published private(set) var frameGenerationVerification: FrameGenerationVerification?
     @Published private(set) var cadenceAudit: VideoCadenceAudit.Report?
+    @Published private(set) var audioIntegrityAudit: AudioIntegrityAudit.Report?
     @Published private(set) var lastOutcome: ExportOutcome?
     @Published private(set) var validationMessage: String?
     @Published private(set) var saveState: SaveState = .idle
@@ -201,6 +202,7 @@ final class StudioViewModel: ObservableObject {
         sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
         cadenceAudit = nil
+        audioIntegrityAudit = nil
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -303,6 +305,7 @@ final class StudioViewModel: ObservableObject {
         sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
         cadenceAudit = nil
+        audioIntegrityAudit = nil
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -414,6 +417,18 @@ final class StudioViewModel: ObservableObject {
                 }
                 outputInfo = analyzedOutput
 
+                // Presence of an audio track is not enough. Read compressed audio
+                // samples from the original and output, then compare real start/end
+                // timing and duration before the file can be accepted.
+                let audioAudit = try await AudioIntegrityAudit.verify(
+                    sourceURL: info.url,
+                    outputURL: finalResult.url
+                )
+                audioIntegrityAudit = audioAudit
+                if let mismatch = audioAudit.mismatchReason {
+                    throw ProcessingError.outputMismatch(mismatch)
+                }
+
                 if let generationResult {
                     let encodedCount = try await VideoSampleAudit.frameCount(url: finalResult.url)
                     let expectedCount = generationResult.sourceFrameCount + generationResult.generatedFrameCount + generationResult.sceneCutFallbackFrameCount
@@ -463,6 +478,7 @@ final class StudioViewModel: ObservableObject {
             } catch {
                 outputInfo = nil
                 cadenceAudit = nil
+                audioIntegrityAudit = nil
                 throw ProcessingError.outputMismatch(error.localizedDescription)
             }
 
@@ -479,6 +495,7 @@ final class StudioViewModel: ObservableObject {
             lastOutcome = nil
             outputInfo = nil
             cadenceAudit = nil
+            audioIntegrityAudit = nil
             validationMessage = nil
             errorMessage = isArabic ? "أُلغيت المعالجة." : "Processing cancelled."
             return nil
@@ -489,6 +506,7 @@ final class StudioViewModel: ObservableObject {
             lastOutcome = nil
             outputInfo = nil
             cadenceAudit = nil
+            audioIntegrityAudit = nil
             errorMessage = message(error)
             return nil
         }
