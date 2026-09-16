@@ -35,10 +35,10 @@ struct AboutView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(AppBranding.appName)
-                    .font(.system(size: 34, weight: .bold))
+                    .font(IrfaaliTypography.brandDisplay)
 
                 Text(preferences.text(ar: "كل لقطة. بشكل أفضل.", en: "Every frame. Refined."))
-                    .font(.title3.weight(.medium))
+                    .font(IrfaaliTypography.groupTitle)
                     .foregroundStyle(.secondary)
             }
         }
@@ -55,7 +55,7 @@ struct AboutView: View {
                     en: "Irfaali is an advanced video enhancement and restoration platform built to analyze footage and refine its quality, motion, and detail through a precise, streamlined iPhone experience."
                 )
             )
-            .font(.body)
+            .font(IrfaaliTypography.body)
             .foregroundStyle(.primary.opacity(0.84))
             .fixedSize(horizontal: false, vertical: true)
 
@@ -65,7 +65,7 @@ struct AboutView: View {
                     en: "From detail recovery and noise reduction to resolution enhancement and frame-rate processing, Irfaali brings video tools into one workflow that preserves the character of the footage and keeps the result under your control."
                 )
             )
-            .font(.subheadline)
+            .font(IrfaaliTypography.secondaryBody)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -79,18 +79,18 @@ struct AboutView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(preferences.text(ar: "المطور والمالك", en: "Developer & owner"))
-                            .font(.caption)
+                            .font(IrfaaliTypography.caption)
                             .foregroundStyle(.secondary)
 
                         Text(AppBranding.ownerHandle)
-                            .font(.headline.weight(.semibold))
+                            .font(IrfaaliTypography.groupTitle)
                             .foregroundStyle(.primary)
                     }
 
                     Spacer()
 
                     Image(systemName: "arrow.up.right")
-                        .font(.caption.weight(.semibold))
+                        .font(IrfaaliTypography.captionStrong)
                         .foregroundStyle(IrfaaliVisual.electricCyan)
                 }
                 .frame(minHeight: 50)
@@ -101,7 +101,7 @@ struct AboutView: View {
             IrfaaliHairline()
 
             Text(AppBranding.copyright)
-                .font(.caption2)
+                .font(IrfaaliTypography.caption)
                 .foregroundStyle(.tertiary)
         }
     }
@@ -109,20 +109,20 @@ struct AboutView: View {
     private var versionLine: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(preferences.text(ar: "الإصدار", en: "Version"))
-                .font(.caption.weight(.medium))
+                .font(IrfaaliTypography.captionStrong)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1")
-                .font(.caption.monospacedDigit().weight(.semibold))
+                .font(IrfaaliTypography.metadataMonospaced)
                 .foregroundStyle(.secondary)
         }
     }
 
     private func sectionEyebrow(_ title: String) -> some View {
         Text(title.uppercased(with: preferences.locale))
-            .font(.caption2.weight(.semibold))
+            .font(IrfaaliTypography.captionStrong)
             .tracking(preferences.isArabic ? 0.15 : 1.15)
             .foregroundStyle(.tertiary)
     }
