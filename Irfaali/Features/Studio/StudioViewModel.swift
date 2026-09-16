@@ -63,6 +63,7 @@ final class StudioViewModel: ObservableObject {
     @Published private(set) var generatedFrameCount = 0
     @Published private(set) var sceneCutFallbackFrameCount = 0
     @Published private(set) var frameGenerationVerification: FrameGenerationVerification?
+    @Published private(set) var cadenceAudit: VideoCadenceAudit.Report?
     @Published private(set) var lastOutcome: ExportOutcome?
     @Published private(set) var validationMessage: String?
     @Published private(set) var saveState: SaveState = .idle
@@ -199,6 +200,7 @@ final class StudioViewModel: ObservableObject {
         generatedFrameCount = 0
         sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
+        cadenceAudit = nil
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -300,6 +302,7 @@ final class StudioViewModel: ObservableObject {
         generatedFrameCount = 0
         sceneCutFallbackFrameCount = 0
         frameGenerationVerification = nil
+        cadenceAudit = nil
         errorMessage = nil
         validationMessage = nil
         lastOutcome = nil
@@ -417,6 +420,7 @@ final class StudioViewModel: ObservableObject {
                     guard encodedCount == expectedCount else {
                         throw ProcessingError.outputMismatch("Expected \(expectedCount) encoded frames; found \(encodedCount).")
                     }
+
                     let verification = FrameGenerationVerification.verify2x(
                         sourceFrameCount: generationResult.sourceFrameCount,
                         generatedFrameCount: generationResult.generatedFrameCount,
@@ -433,11 +437,32 @@ final class StudioViewModel: ObservableObject {
                         outputInfo = nil
                         throw ProcessingError.frameGenerationVerificationFailed(details)
                     }
+
+                    // Nominal track metadata can say 60/120 FPS even when cadence is
+                    // irregular. Read the encoded samples back and require timing
+                    // evidence before accepting a generated-frame-rate result.
+                    let cadence = try await VideoCadenceAudit.audit(url: finalResult.url)
+                    cadenceAudit = cadence
+                    let expectedFPS = generationResult.targetFPS
+                    let fpsTolerance = max(0.75, expectedFPS * 0.015)
+
+                    guard abs(cadence.estimatedFPS - expectedFPS) <= fpsTolerance else {
+                        throw ProcessingError.outputMismatch(
+                            String(format: "Cadence measured %.2f FPS; expected %.2f FPS.", cadence.estimatedFPS, expectedFPS)
+                        )
+                    }
+
+                    guard cadence.hasStableTimestamps else {
+                        throw ProcessingError.outputMismatch(
+                            String(format: "Frame timing is unstable (jitter %.3f).", cadence.intervalJitterRatio)
+                        )
+                    }
                 }
             } catch let error as ProcessingError {
                 throw error
             } catch {
                 outputInfo = nil
+                cadenceAudit = nil
                 throw ProcessingError.outputMismatch(error.localizedDescription)
             }
 
@@ -453,6 +478,7 @@ final class StudioViewModel: ObservableObject {
             progress = 0
             lastOutcome = nil
             outputInfo = nil
+            cadenceAudit = nil
             validationMessage = nil
             errorMessage = isArabic ? "أُلغيت المعالجة." : "Processing cancelled."
             return nil
@@ -462,6 +488,7 @@ final class StudioViewModel: ObservableObject {
             progress = 0
             lastOutcome = nil
             outputInfo = nil
+            cadenceAudit = nil
             errorMessage = message(error)
             return nil
         }
