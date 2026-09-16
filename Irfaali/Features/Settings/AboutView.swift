@@ -20,7 +20,7 @@ struct AboutView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
         .navigationTitle(preferences.text(ar: "عن ارفعلي", en: "About Irfaali"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -56,7 +56,7 @@ struct AboutView: View {
                 )
             )
             .font(.body)
-            .foregroundStyle(.white.opacity(0.84))
+            .foregroundStyle(.primary.opacity(0.84))
             .fixedSize(horizontal: false, vertical: true)
 
             Text(
@@ -84,7 +84,7 @@ struct AboutView: View {
 
                         Text(AppBranding.ownerHandle)
                             .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                     }
 
                     Spacer()
