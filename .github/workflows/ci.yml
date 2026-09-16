@@ -55,6 +55,7 @@ jobs:
           xcrun simctl list devicetypes | head -80
 
       - name: Create and boot CI simulator
+        timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
@@ -86,11 +87,13 @@ jobs:
           UDID=$(xcrun simctl create "Irfaali CI" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
           echo "Created simulator: $UDID"
+          echo "Booting simulator $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl list devices "$RUNTIME_ID"
 
       - name: Build for simulator
+        timeout-minutes: 8
         run: |
           set -o pipefail
           xcodebuild \
@@ -114,6 +117,7 @@ jobs:
           test "$SPLASH_SOURCE_SHA" = "$BUNDLE_SHA"
 
       - name: Run unit tests
+        timeout-minutes: 10
         run: |
           set -o pipefail
           xcodebuild \
@@ -134,6 +138,7 @@ jobs:
           fi
 
       - name: Build production Release for iPhone
+        timeout-minutes: 8
         run: |
           set -euo pipefail
           xcodebuild \
