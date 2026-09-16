@@ -96,7 +96,6 @@ struct VideoContentAnalyzer: Sendable {
             count = 7
         }
 
-        if count == 1 { return [duration * 0.5] }
         return (0..<count).map { index in
             let fraction = (Double(index) + 0.5) / Double(count)
             return min(max(0, duration * fraction), max(0, duration - 0.03))
@@ -132,19 +131,19 @@ private struct PixelFrame {
         let sourceHeight = max(image.height, 1)
         let maxEdge = 160.0
         let scale = min(1, maxEdge / Double(max(sourceWidth, sourceHeight)))
-        width = max(16, Int((Double(sourceWidth) * scale).rounded()))
-        height = max(16, Int((Double(sourceHeight) * scale).rounded()))
+        let renderWidth = max(16, Int((Double(sourceWidth) * scale).rounded()))
+        let renderHeight = max(16, Int((Double(sourceHeight) * scale).rounded()))
+        let bytesPerRow = renderWidth * 4
 
-        let bytesPerRow = width * 4
-        var rgba = [UInt8](repeating: 0, count: height * bytesPerRow)
+        var rgba = [UInt8](repeating: 0, count: renderHeight * bytesPerRow)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
 
         let rendered = rgba.withUnsafeMutableBytes { buffer -> Bool in
             guard let context = CGContext(
                 data: buffer.baseAddress,
-                width: width,
-                height: height,
+                width: renderWidth,
+                height: renderHeight,
                 bitsPerComponent: 8,
                 bytesPerRow: bytesPerRow,
                 space: colorSpace,
@@ -154,13 +153,13 @@ private struct PixelFrame {
             }
 
             context.interpolationQuality = .medium
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: renderWidth, height: renderHeight))
             return true
         }
 
         guard rendered else { throw VideoContentAnalyzer.AnalysisError.cannotRenderFrame }
 
-        var lumaValues = [Double](repeating: 0, count: width * height)
+        var lumaValues = [Double](repeating: 0, count: renderWidth * renderHeight)
         var redTotal = 0.0
         var greenTotal = 0.0
         var blueTotal = 0.0
@@ -168,43 +167,39 @@ private struct PixelFrame {
         var highlightCount = 0
         var shadowCount = 0
 
-        for y in 0..<height {
-            for x in 0..<width {
-                let pixelIndex = y * width + x
+        for y in 0..<renderHeight {
+            for x in 0..<renderWidth {
+                let pixelIndex = y * renderWidth + x
                 let byteIndex = y * bytesPerRow + x * 4
                 let r = Double(rgba[byteIndex]) / 255
                 let g = Double(rgba[byteIndex + 1]) / 255
                 let b = Double(rgba[byteIndex + 2]) / 255
                 let value = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                let highChannel = max(r, max(g, b))
+                let lowChannel = min(r, min(g, b))
 
                 lumaValues[pixelIndex] = value
                 redTotal += r
                 greenTotal += g
                 blueTotal += b
-                saturationTotal += max(r, g, b) - min(r, g, b)
+                saturationTotal += highChannel - lowChannel
                 if value >= 0.985 { highlightCount += 1 }
                 if value <= 0.025 { shadowCount += 1 }
             }
         }
 
-        luma = lumaValues
-        let count = Double(max(width * height, 1))
+        let count = Double(max(renderWidth * renderHeight, 1))
         let mean = lumaValues.reduce(0, +) / count
-        meanLuminance = mean
-
         let variance = lumaValues.reduce(0) { partial, value in
             let delta = value - mean
             return partial + delta * delta
         } / count
-        luminanceDeviation = min(1, sqrt(max(variance, 0)) * 2.2)
-        highlightClippingRatio = Double(highlightCount) / count
-        shadowClippingRatio = Double(shadowCount) / count
-        saturationScore = min(1, saturationTotal / count * 1.6)
 
         let averageR = redTotal / count
         let averageG = greenTotal / count
         let averageB = blueTotal / count
-        colorCastScore = min(1, (max(averageR, averageG, averageB) - min(averageR, averageG, averageB)) * 2.2)
+        let highestAverageChannel = max(averageR, max(averageG, averageB))
+        let lowestAverageChannel = min(averageR, min(averageG, averageB))
 
         var gradientTotal = 0.0
         var gradientCount = 0
@@ -215,15 +210,15 @@ private struct PixelFrame {
         var ordinaryBoundaryTotal = 0.0
         var ordinaryBoundaryCount = 0
 
-        if width > 2 && height > 2 {
-            for y in 1..<(height - 1) {
-                for x in 1..<(width - 1) {
-                    let index = y * width + x
+        if renderWidth > 2 && renderHeight > 2 {
+            for y in 1..<(renderHeight - 1) {
+                for x in 1..<(renderWidth - 1) {
+                    let index = y * renderWidth + x
                     let center = lumaValues[index]
                     let left = lumaValues[index - 1]
                     let right = lumaValues[index + 1]
-                    let up = lumaValues[index - width]
-                    let down = lumaValues[index + width]
+                    let up = lumaValues[index - renderWidth]
+                    let down = lumaValues[index + renderWidth]
 
                     gradientTotal += abs(right - left) + abs(down - up)
                     gradientCount += 2
@@ -252,16 +247,24 @@ private struct PixelFrame {
         }
 
         let gradientMean = gradientCount > 0 ? gradientTotal / Double(gradientCount) : 0
-        sharpnessScore = min(1, gradientMean * 6.2)
-
         let residualMean = residualCount > 0 ? residualTotal / Double(residualCount) : 0
         let edgeAdjustedResidual = max(0, residualMean - gradientMean * 0.22)
-        noiseScore = min(1, edgeAdjustedResidual * 10.0)
-
         let blockMean = blockBoundaryCount > 0 ? blockBoundaryTotal / Double(blockBoundaryCount) : 0
         let ordinaryMean = ordinaryBoundaryCount > 0 ? ordinaryBoundaryTotal / Double(ordinaryBoundaryCount) : 0
         let excessBlockiness = max(0, blockMean - ordinaryMean)
+
+        width = renderWidth
+        height = renderHeight
+        luma = lumaValues
+        meanLuminance = mean
+        luminanceDeviation = min(1, sqrt(max(variance, 0)) * 2.2)
+        highlightClippingRatio = Double(highlightCount) / count
+        shadowClippingRatio = Double(shadowCount) / count
+        sharpnessScore = min(1, gradientMean * 6.2)
+        noiseScore = min(1, edgeAdjustedResidual * 10.0)
         compressionArtifactScore = min(1, excessBlockiness * 14.0)
+        saturationScore = min(1, saturationTotal / count * 1.6)
+        colorCastScore = min(1, (highestAverageChannel - lowestAverageChannel) * 2.2)
     }
 
     func meanAbsoluteLumaDifference(to other: PixelFrame) -> Double {
