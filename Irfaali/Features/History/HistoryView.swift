@@ -51,14 +51,14 @@ struct HistoryView: View {
                     ? preferences.text(ar: "ما عندك نتائج للحين", en: "No results yet")
                     : preferences.text(ar: "آخر النتائج", en: "Recent results")
             )
-            .font(.subheadline.weight(.medium))
+            .font(IrfaaliTypography.secondaryBody)
             .foregroundStyle(.secondary)
 
             Spacer()
 
             if !records.isEmpty {
                 Text("\(records.count)")
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .font(IrfaaliTypography.metadataMonospaced)
                     .foregroundStyle(.tertiary)
             }
         }
@@ -74,14 +74,14 @@ struct HistoryView: View {
                     .fill(Color.primary.opacity(0.10))
                     .frame(width: 0.5, height: 42)
                 Image(systemName: "play.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(IrfaaliTypography.control)
                     .foregroundStyle(.primary.opacity(0.76))
             }
             .frame(width: 64, height: 42)
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(preferences.text(ar: "أول فيديو معالج يظهر هني.", en: "Your first processed video appears here."))
-                    .font(.title3.weight(.semibold))
+                    .font(IrfaaliTypography.groupTitle)
 
                 Text(
                     preferences.text(
@@ -89,7 +89,7 @@ struct HistoryView: View {
                         en: "The final file and its details stay ready for you."
                     )
                 )
-                .font(.subheadline)
+                .font(IrfaaliTypography.secondaryBody)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -110,7 +110,7 @@ struct HistoryView: View {
                         Color.black.opacity(record.outputExists ? 0.08 : 0.42)
 
                         Image(systemName: record.outputExists ? "play.fill" : "exclamationmark.triangle.fill")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(IrfaaliTypography.metadata)
                             .foregroundStyle(record.outputExists ? Color.white.opacity(0.92) : Color.orange)
                             .padding(9)
                             .background(Color.black.opacity(0.56), in: Circle())
@@ -123,11 +123,12 @@ struct HistoryView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(record.sourceFileName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(IrfaaliTypography.secondaryBody)
+                        .fontWeight(.semibold)
                         .lineLimit(1)
 
                     Text("\(record.width)×\(record.height) · \(IrfaaliFormatters.fps(record.fps))")
-                        .font(.caption.monospacedDigit().weight(.medium))
+                        .font(IrfaaliTypography.metadataMonospaced)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
 
@@ -141,7 +142,7 @@ struct HistoryView: View {
                                 ? preferences.text(ar: "جاهز", en: "Ready")
                                 : preferences.text(ar: "الملف غير موجود", en: "File missing")
                         )
-                        .font(.caption2.weight(.medium))
+                        .font(IrfaaliTypography.captionStrong)
                         .foregroundStyle(record.outputExists ? Color.secondary : Color.orange)
                     }
                 }
@@ -162,7 +163,7 @@ struct HistoryView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.body.weight(.semibold))
+                        .font(IrfaaliTypography.bodyMedium)
                         .foregroundStyle(.secondary)
                         .frame(width: 34, height: 44)
                         .contentShape(Rectangle())
@@ -171,14 +172,14 @@ struct HistoryView: View {
 
             HStack(alignment: .firstTextBaseline) {
                 Text(record.createdAt.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(preferences.locale)))
-                    .font(.caption2)
+                    .font(IrfaaliTypography.caption)
                     .foregroundStyle(.tertiary)
 
                 Spacer()
 
                 if record.outputExists {
                     Text("\(record.codec) · \(formattedFileSize(record))")
-                        .font(.caption2.monospacedDigit())
+                        .font(IrfaaliTypography.metadataMonospaced)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
