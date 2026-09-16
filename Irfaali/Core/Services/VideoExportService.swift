@@ -79,24 +79,17 @@ final class VideoExportService {
         let sourceAsset = AVURLAsset(url: info.url)
         let outputFPS = settings.effectiveFPS(for: info)
         let targetSize = settings.targetSize(for: info)
-        let needsGeometryWork = true // Normalize orientation for every encoded output.
 
-        let exportAsset: AVAsset
-        let videoComposition: AVMutableVideoComposition?
-
-        if needsGeometryWork {
-            let prepared = try await prepareComposition(
-                sourceAsset: sourceAsset,
-                info: info,
-                targetSize: targetSize,
-                outputFPS: outputFPS
-            )
-            exportAsset = prepared.asset
-            videoComposition = prepared.videoComposition
-        } else {
-            exportAsset = sourceAsset
-            videoComposition = nil
-        }
+        // Every encoded result is normalized through an explicit composition so
+        // portrait orientation, requested dimensions and cadence stay measurable.
+        let prepared = try await prepareComposition(
+            sourceAsset: sourceAsset,
+            info: info,
+            targetSize: targetSize,
+            outputFPS: outputFPS
+        )
+        let exportAsset: AVAsset = prepared.asset
+        let videoComposition: AVMutableVideoComposition = prepared.videoComposition
 
         try Task.checkCancellation()
 
@@ -104,41 +97,10 @@ final class VideoExportService {
         let useHEVC = resolvedCodec(settings: settings, info: info) == .hevc
 
         do {
-            guard let videoComposition else {
-                throw ExportError.failed("Missing video composition for encoded output.")
-            }
-
-            // Primary production path: AVAssetExportSession + AVMutableVideoComposition.
-            // The composition applies the exact requested render size and cadence,
-            // while the HEVC preset provides Apple's highest-quality H.265 output.
-            try await AVAssetExportEngine.export(
-                asset: exportAsset,
-                videoComposition: videoComposition,
-                targetSize: targetSize,
-                fps: outputFPS,
-                useHEVC: useHEVC,
-                destination: destination,
-                progress: progress
-            )
-
-            try Task.checkCancellation()
-            let exportedInfo = try await VideoAnalyzer().analyze(url: destination)
-            if let mismatch = OutputVerification.mismatch(
-                source: info,
-                output: exportedInfo,
-                settings: settings
-            ) {
-                throw ExportError.failed("AVAssetExportSession output mismatch: \(mismatch)")
-            }
-            progress(1)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            // Some simulator/device + size/codec combinations reject an export
-            // preset or silently constrain its dimensions/cadence. Keep the
-            // existing explicit reader/writer engine as a compatibility fallback
-            // so the final file remains truthful to the user's requested output.
-            try? FileManager.default.removeItem(at: destination)
+            // Production quality path: explicit reader/writer encoding gives Irfaali
+            // deterministic codec, dimensions, cadence and bitrate guardrails. This
+            // prevents a high-quality restoration from being weakened by an opaque
+            // export-preset bitrate decision at the final stage.
             try await VideoEncodingService.encode(
                 asset: exportAsset,
                 composition: videoComposition,
@@ -151,6 +113,32 @@ final class VideoExportService {
             )
 
             try Task.checkCancellation()
+            let encodedInfo = try await VideoAnalyzer().analyze(url: destination)
+            if let mismatch = OutputVerification.mismatch(
+                source: info,
+                output: encodedInfo,
+                settings: settings
+            ) {
+                throw ExportError.failed("Primary encoder output mismatch: \(mismatch)")
+            }
+            progress(1)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // Keep AVAssetExportSession as a compatibility fallback for devices or
+            // media combinations rejected by the explicit reader/writer path.
+            try? FileManager.default.removeItem(at: destination)
+            try await AVAssetExportEngine.export(
+                asset: exportAsset,
+                videoComposition: videoComposition,
+                targetSize: targetSize,
+                fps: outputFPS,
+                useHEVC: useHEVC,
+                destination: destination,
+                progress: progress
+            )
+
+            try Task.checkCancellation()
             let fallbackInfo = try await VideoAnalyzer().analyze(url: destination)
             if let mismatch = OutputVerification.mismatch(
                 source: info,
@@ -158,7 +146,7 @@ final class VideoExportService {
                 settings: settings
             ) {
                 try? FileManager.default.removeItem(at: destination)
-                throw ExportError.failed("Fallback encoder output mismatch: \(mismatch)")
+                throw ExportError.failed("Fallback export output mismatch: \(mismatch)")
             }
         }
 
@@ -268,17 +256,6 @@ final class VideoExportService {
 
         try Task.checkCancellation()
         return (composition, videoComposition)
-    }
-
-    private func presetName(
-        settings: VideoProcessingSettings,
-        info: VideoAssetInfo,
-        targetSize: CGSize
-    ) -> String {
-        let codec = resolvedCodec(settings: settings, info: info)
-        // The composition owns the output dimensions, including portrait 4K.
-        // A fixed landscape size preset must not constrain that render size.
-        return codec == .hevc ? AVAssetExportPresetHEVCHighestQuality : AVAssetExportPresetHighestQuality
     }
 
     private func resolvedCodec(
