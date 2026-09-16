@@ -85,9 +85,9 @@ struct VideoCadenceAudit {
                     throw AuditError.missingPixelBuffer
                 }
 
-                let signature = frameSignature(pixelBuffer)
+                let signature = Self.frameSignature(pixelBuffer)
                 if let previousSignature {
-                    visualDifferences.append(meanAbsoluteDifference(previousSignature, signature))
+                    visualDifferences.append(Self.meanAbsoluteDifference(previousSignature, signature))
                 }
                 previousSignature = signature
                 timestamps.append(pts)
@@ -101,7 +101,7 @@ struct VideoCadenceAudit {
                 throw reader.error ?? AuditError.cannotRead
             }
 
-            return summarize(timestamps: timestamps, visualDifferences: visualDifferences)
+            return Self.summarize(timestamps: timestamps, visualDifferences: visualDifferences)
         }
 
         return try await withTaskCancellationHandler(operation: {
@@ -124,10 +124,10 @@ struct VideoCadenceAudit {
             )
         }
 
-        let deltas = zip(timestamps.dropFirst(), timestamps).map { current, previous in
-            max(0, current - previous)
+        let deltas = zip(timestamps.dropFirst(), timestamps).map { pair in
+            max(0, pair.0 - pair.1)
         }
-        let averageInterval = mean(deltas)
+        let averageInterval = Self.mean(deltas)
         let duration = max(0.000_001, timestamps.last! - timestamps.first!)
         let estimatedFPS = Double(timestamps.count - 1) / duration
         let maximumDeviation = deltas.map { abs($0 - averageInterval) }.max() ?? 0
@@ -139,8 +139,8 @@ struct VideoCadenceAudit {
         let standardDeviation = sqrt(max(0, variance))
         let jitterRatio = averageInterval > 0 ? standardDeviation / averageInterval : 1
 
-        let validVisualDifferences = visualDifferences.filter(\.isFinite)
-        let averageVisualDifference = mean(validVisualDifferences)
+        let validVisualDifferences = visualDifferences.filter { $0.isFinite }
+        let averageVisualDifference = Self.mean(validVisualDifferences)
         let duplicateThreshold = 0.0025
         let duplicateCount = validVisualDifferences.filter { $0 <= duplicateThreshold }.count
         let duplicateLikeRatio = validVisualDifferences.isEmpty
