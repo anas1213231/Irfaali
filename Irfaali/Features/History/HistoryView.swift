@@ -33,7 +33,7 @@ struct HistoryView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
         .navigationTitle(preferences.text(ar: "فيديوهاتي", en: "My Videos"))
         .navigationBarTitleDisplayMode(.large)
         .sheet(item: $playingRecord) { record in
@@ -68,14 +68,14 @@ struct HistoryView: View {
         VStack(alignment: .leading, spacing: 24) {
             ZStack {
                 Rectangle()
-                    .fill(Color.white.opacity(0.10))
+                    .fill(Color.primary.opacity(0.10))
                     .frame(width: 64, height: 0.5)
                 Rectangle()
-                    .fill(Color.white.opacity(0.10))
+                    .fill(Color.primary.opacity(0.10))
                     .frame(width: 0.5, height: 42)
                 Image(systemName: "play.fill")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.76))
+                    .foregroundStyle(.primary.opacity(0.76))
             }
             .frame(width: 64, height: 42)
 
@@ -142,7 +142,7 @@ struct HistoryView: View {
                                 : preferences.text(ar: "الملف غير موجود", en: "File missing")
                         )
                         .font(.caption2.weight(.medium))
-                        .foregroundStyle(record.outputExists ? Color.white.opacity(0.56) : Color.orange)
+                        .foregroundStyle(record.outputExists ? Color.secondary : Color.orange)
                     }
                 }
 
