@@ -10,6 +10,14 @@ final class StudioViewModel: ObservableObject {
         case failed(String)
     }
 
+    enum AnalysisStage: Equatable {
+        case idle
+        case readingMetadata
+        case samplingFrames
+        case preparingRecommendation
+        case complete
+    }
+
     enum ProcessingStage: Equatable {
         case idle
         case preparing
@@ -43,9 +51,12 @@ final class StudioViewModel: ObservableObject {
 
     @Published private(set) var info: VideoAssetInfo?
     @Published private(set) var outputInfo: VideoAssetInfo?
+    @Published private(set) var analysisReport: VideoAnalysisReport?
+    @Published private(set) var recommendation: VideoRecommendation?
     @Published var settings: VideoProcessingSettings = .standard
     @Published var enhancement: VideoEnhancementSettings = .off
     @Published private(set) var isAnalyzing = false
+    @Published private(set) var analysisStage: AnalysisStage = .idle
     @Published private(set) var isProcessing = false
     @Published private(set) var processingStage: ProcessingStage = .idle
     @Published private(set) var progress: Double = 0
@@ -64,6 +75,7 @@ final class StudioViewModel: ObservableObject {
     }
 
     private let analyzer = VideoAnalyzer()
+    private let contentAnalyzer = VideoContentAnalyzer()
     private let exporter = VideoExportService()
     private let frameGenerator = FrameGenerationService()
     private let enhancer = VideoEnhancementService()
@@ -109,6 +121,36 @@ final class StudioViewModel: ObservableObject {
         )
     }
 
+    var analysisStageTextArabic: String {
+        switch analysisStage {
+        case .idle:
+            return "جاهز للتحليل"
+        case .readingMetadata:
+            return "قراءة الفيديو"
+        case .samplingFrames:
+            return "تحليل اللقطات"
+        case .preparingRecommendation:
+            return "إعداد التوصية"
+        case .complete:
+            return "اكتمل التحليل"
+        }
+    }
+
+    var analysisStageTextEnglish: String {
+        switch analysisStage {
+        case .idle:
+            return "Ready to analyze"
+        case .readingMetadata:
+            return "Reading video"
+        case .samplingFrames:
+            return "Analyzing frames"
+        case .preparingRecommendation:
+            return "Preparing recommendation"
+        case .complete:
+            return "Analysis complete"
+        }
+    }
+
     var processingStageTextArabic: String {
         switch processingStage {
         case .idle:
@@ -150,7 +192,9 @@ final class StudioViewModel: ObservableObject {
     func importVideo(url: URL) async {
         cancelProcessing()
         if let activeProcessingTask { _ = await activeProcessingTask.value }
+
         isAnalyzing = true
+        analysisStage = .readingMetadata
         processingStage = .idle
         generatedFrameCount = 0
         sceneCutFallbackFrameCount = 0
@@ -159,21 +203,51 @@ final class StudioViewModel: ObservableObject {
         validationMessage = nil
         lastOutcome = nil
         outputInfo = nil
+        analysisReport = nil
+        recommendation = nil
         saveState = .idle
+
+        // Import never silently changes the picture. A recommendation is prepared
+        // separately and only becomes active after explicit user confirmation.
+        settings = VideoProcessingSettings(resolution: .source, frameRate: .source, codec: .source)
+        enhancement = .off
+
         defer { isAnalyzing = false }
 
         do {
             let analyzed = try await analyzer.analyze(url: url)
             info = analyzed
-            settings = VideoProcessingSettings.recommended(for: analyzed)
-            enhancement = .smart(for: analyzed)
+
+            analysisStage = .samplingFrames
+            let report: VideoAnalysisReport
+            do {
+                report = try await contentAnalyzer.analyze(info: analyzed)
+            } catch {
+                // A frame-analysis failure must not make an otherwise valid video unusable.
+                // The fallback is deliberately conservative and avoids inventing defects.
+                report = .metadataOnlyFallback
+            }
+            analysisReport = report
+
+            analysisStage = .preparingRecommendation
+            recommendation = VideoRecommendationEngine.recommend(info: analyzed, report: report)
+            analysisStage = .complete
         } catch {
             info = nil
+            analysisReport = nil
+            recommendation = nil
+            analysisStage = .idle
             errorMessage = message(error)
         }
     }
 
     func applyRecommendedSettings() {
+        if let recommendation {
+            settings = recommendation.processing
+            enhancement = recommendation.enhancement
+            return
+        }
+
         guard let info else { return }
         settings = VideoProcessingSettings.recommended(for: info)
         enhancement = .smart(for: info)
@@ -184,7 +258,12 @@ final class StudioViewModel: ObservableObject {
             enhancement = mode == .off ? .off : enhancement
             return
         }
-        enhancement = .preset(mode, info: info)
+
+        if mode == .smart, let recommendation {
+            enhancement = recommendation.enhancement
+        } else {
+            enhancement = .preset(mode, info: info)
+        }
     }
 
     func updateEnhancement(_ keyPath: WritableKeyPath<VideoEnhancementSettings, Double>, value: Double) {
