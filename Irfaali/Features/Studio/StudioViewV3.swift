@@ -1,3 +1,4 @@
+import Foundation
 import PhotosUI
 import SwiftData
 import SwiftUI
@@ -394,7 +395,9 @@ struct StudioViewV3: View {
     }
 
     private func findingRow(_ title: String, _ value: String, signal: Double) -> some View {
-        HStack(spacing: 14) {
+        let normalized = min(max(signal, 0), 1)
+
+        return HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(IrfaaliTypography.caption)
@@ -411,7 +414,7 @@ struct StudioViewV3: View {
                 .overlay(alignment: .leading) {
                     Capsule()
                         .fill(IrfaaliVisual.electricCyan.opacity(0.76))
-                        .frame(width: max(4, 54 * min(max(signal, 0), 1)), height: 3)
+                        .frame(width: max(CGFloat(4), CGFloat(54) * CGFloat(normalized)), height: 3)
                 }
         }
         .frame(minHeight: 54)
