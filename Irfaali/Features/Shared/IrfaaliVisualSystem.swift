@@ -7,10 +7,10 @@ enum IrfaaliVisual {
 
     static let graphite = Color(white: 0.075)
     static let obsidian = Color(white: 0.025)
-    static let quietFill = Color.white.opacity(0.040)
-    static let quieterFill = Color.white.opacity(0.022)
-    static let hairline = Color.white.opacity(0.105)
-    static let strongHairline = Color.white.opacity(0.19)
+    static let quietFill = Color.primary.opacity(0.040)
+    static let quieterFill = Color.primary.opacity(0.022)
+    static let hairline = Color.primary.opacity(0.105)
+    static let strongHairline = Color.primary.opacity(0.19)
 
     // Kept as shared compatibility tokens. The redesigned UI uses color as a signal,
     // not as a decorative surface treatment.
@@ -29,26 +29,7 @@ enum IrfaaliVisual {
 
 struct IrfaaliBackdrop: View {
     var body: some View {
-        ZStack {
-            Color.black
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.020),
-                    Color.white.opacity(0.006),
-                    Color.clear
-                ],
-                startPoint: .top,
-                endPoint: .center
-            )
-
-            Rectangle()
-                .fill(IrfaaliVisual.graphite.opacity(0.22))
-                .frame(height: 1)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .padding(.top, 1)
-        }
-        .ignoresSafeArea()
+        ThemeBackground()
     }
 }
 
@@ -60,7 +41,7 @@ struct IrfaaliSectionHeading: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             if let detail, !detail.isEmpty {
                 Text(detail)
@@ -93,7 +74,7 @@ struct IrfaaliMiniActivity: View {
         HStack(alignment: .center, spacing: 3) {
             ForEach(0..<5, id: \.self) { index in
                 Rectangle()
-                    .fill(index == 2 ? IrfaaliVisual.electricCyan : Color.white.opacity(0.48))
+                    .fill(index == 2 ? IrfaaliVisual.electricCyan : Color.primary.opacity(0.48))
                     .frame(width: 1.5, height: active ? CGFloat(8 + ((index * 5) % 10)) : CGFloat(16 - ((index * 3) % 8)))
             }
         }
@@ -125,7 +106,7 @@ struct IrfaaliProcessingGlyph: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.18), lineWidth: 0.65)
+                .stroke(Color.primary.opacity(0.18), lineWidth: 0.65)
                 .frame(width: 178, height: 112)
 
             ZStack {
@@ -137,7 +118,7 @@ struct IrfaaliProcessingGlyph: View {
                     let rowOpacity = 0.14 + (clampedProgress * 0.38)
 
                     Rectangle()
-                        .fill(Color.white.opacity(rowOpacity))
+                        .fill(Color.primary.opacity(rowOpacity))
                         .frame(width: 146 - abs(row) * 5, height: index == 4 ? 1.4 : 0.75)
                         .offset(x: displacement, y: row * 9.3)
                 }
@@ -150,7 +131,7 @@ struct IrfaaliProcessingGlyph: View {
                 HStack(spacing: 4) {
                     ForEach(0..<13, id: \.self) { index in
                         Rectangle()
-                            .fill(index <= Int(clampedProgress * 12) ? Color.white.opacity(0.46) : Color.white.opacity(0.10))
+                            .fill(index <= Int(clampedProgress * 12) ? Color.primary.opacity(0.46) : Color.primary.opacity(0.10))
                             .frame(width: 6, height: 1)
                     }
                 }
