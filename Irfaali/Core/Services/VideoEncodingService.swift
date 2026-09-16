@@ -42,7 +42,12 @@ enum VideoEncodingService {
         guard reader.canAdd(videoOutput) else { throw EncodingError.failed("Cannot decode video") }
         reader.add(videoOutput)
         let writer = try AVAssetWriter(outputURL: destination, fileType: .mp4)
-        let targetBitrate = max(2_000_000, min(120_000_000, max(bitrate, Double(size.width * size.height) * fps * (hevc ? 0.08 : 0.14))))
+        let targetBitrate = VideoEncodingQualityPolicy.targetBitrate(
+            size: size,
+            fps: fps,
+            hevc: hevc,
+            sourceBitrate: bitrate
+        )
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: hevc ? AVVideoCodecType.hevc : AVVideoCodecType.h264,
             AVVideoWidthKey: Int(size.width), AVVideoHeightKey: Int(size.height),
