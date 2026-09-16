@@ -13,7 +13,6 @@ struct AboutView: View {
                     productStatement
                     ownershipSection
                     versionLine
-                    IrfaaliFooterSignature()
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 28)
@@ -52,8 +51,8 @@ struct AboutView: View {
 
             Text(
                 preferences.text(
-                    ar: "ارفعلي أداة فيديو مصممة حول النتيجة نفسها: صورة أوضح، حركة أدق، وتجربة هادئة.",
-                    en: "Irfaali is built around the result itself: clearer imagery, more precise motion, and a calmer workflow."
+                    ar: "ارفعلي منصة متقدمة لتحسين وترميم الفيديو، صُممت لتحليل اللقطات ومعالجة جودتها وحركتها وتفاصيلها ضمن تجربة دقيقة وسلسة على iPhone.",
+                    en: "Irfaali is an advanced video enhancement and restoration platform built to analyze footage and refine its quality, motion, and detail through a precise, streamlined iPhone experience."
                 )
             )
             .font(.body)
@@ -62,12 +61,13 @@ struct AboutView: View {
 
             Text(
                 preferences.text(
-                    ar: "ما نضيف علامة مائية أو مقدمة أو خاتمة على فيديوك.",
-                    en: "No watermark, intro or outro is added to your video."
+                    ar: "من استعادة التفاصيل وتقليل التشويش إلى رفع الدقة ومعالجة معدل الإطارات، يجمع ارفعلي أدوات الفيديو في مسار واحد يحافظ على طبيعة اللقطة ويمنحك تحكمًا واضحًا في النتيجة.",
+                    en: "From detail recovery and noise reduction to resolution enhancement and frame-rate processing, Irfaali brings video tools into one workflow that preserves the character of the footage and keeps the result under your control."
                 )
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -78,7 +78,7 @@ struct AboutView: View {
             Link(destination: AppBranding.telegramURL) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(preferences.text(ar: "المالك والمطور", en: "Created & owned by"))
+                        Text(preferences.text(ar: "المطور والمالك", en: "Developer & owner"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
