@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PremiumSurface<Content: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
     private let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -12,23 +13,28 @@ struct PremiumSurface<Content: View>: View {
             .padding(18)
             .background {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(IrfaaliVisual.quietFill)
+                    .fill(surfaceFill)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.14),
-                                Color.white.opacity(0.055),
-                                Color.white.opacity(0.025)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.5
-                    )
+                    .stroke(surfaceStroke, lineWidth: 0.5)
             }
+    }
+
+    private var surfaceFill: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.040)
+            : Color.black.opacity(0.032)
+    }
+
+    private var surfaceStroke: LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color.white.opacity(0.14), Color.white.opacity(0.055), Color.white.opacity(0.025)]
+                : [Color.black.opacity(0.11), Color.black.opacity(0.045), Color.black.opacity(0.020)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 
@@ -41,7 +47,7 @@ struct MetricTile: View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             Text(title)
                 .font(.caption)
@@ -49,7 +55,7 @@ struct MetricTile: View {
 
             Text(value)
                 .font(.system(.body, design: .default, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
