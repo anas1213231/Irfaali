@@ -185,9 +185,11 @@ struct IrfaaliProcessingGlyph: View {
     }
 }
 
+/// Neutral footer kept for compatibility with any older screen that still references it.
+/// Irfaali intentionally exposes no user-facing AI branding.
 struct IrfaaliFooterSignature: View {
     var body: some View {
-        Text("Designed by AI ✨")
+        Text(AppBranding.appName)
             .font(.caption2.weight(.regular))
             .tracking(0.2)
             .foregroundStyle(.tertiary)
