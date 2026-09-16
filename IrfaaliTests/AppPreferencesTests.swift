@@ -61,6 +61,10 @@ final class AppPreferencesTests: XCTestCase {
         XCTAssertEqual(AppPreferences(defaults: defaults).appearance, .dark)
     }
 
+    func testOnlyDarkAndLightAreExposed() {
+        XCTAssertEqual(Set(AppPreferences.Appearance.allCases.map(\.rawValue)), Set(["dark", "light"]))
+    }
+
     func testMotionAndHapticsStayEnabledWithoutUserSettings() {
         let preferences = AppPreferences(defaults: defaults)
         preferences.animationsEnabled = false
