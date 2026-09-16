@@ -28,6 +28,7 @@ jobs:
         run: xcodegen generate
 
       - name: Create and boot diagnostic simulator
+        timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
@@ -53,6 +54,7 @@ jobs:
           ')
           UDID=$(xcrun simctl create "Irfaali Test Diagnostics" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Booting simulator $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
 
