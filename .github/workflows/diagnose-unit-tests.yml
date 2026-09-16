@@ -1,0 +1,112 @@
+name: Diagnose Unit Tests
+
+on:
+  push:
+    branches: ["feature/ci-unit-tests-fix-20260916"]
+
+concurrency:
+  group: diagnose-unit-tests-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-tests:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Prepare app icon
+        run: bash scripts/prepare_app_icon.sh
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Create and boot diagnostic simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUNTIME_ID=$(xcrun simctl list runtimes -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          runtimes = [r for r in data.get("runtimes", []) if r.get("isAvailable") and r.get("identifier", "").startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
+          if not runtimes:
+              raise SystemExit("No available iOS Simulator runtime found")
+          def version(r):
+              return tuple(int(p) if p.isdigit() else 0 for p in str(r.get("version", "0")).split("."))
+          runtimes.sort(key=version)
+          print(runtimes[-1]["identifier"])
+          ')
+          DEVICE_TYPE_ID=$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          iphones = [d for d in data.get("devicetypes", []) if str(d.get("name", "")).startswith("iPhone")]
+          if not iphones:
+              raise SystemExit("No iPhone simulator device type found")
+          chosen = next((d for d in iphones if d.get("name") == "iPhone 17 Pro"), iphones[0])
+          print(chosen["identifier"])
+          ')
+          UDID=$(xcrun simctl create "Irfaali Test Diagnostics" "$DEVICE_TYPE_ID" "$RUNTIME_ID")
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Run unit tests with result bundle
+        id: tests
+        shell: bash
+        run: |
+          set -uo pipefail
+          LOG="$RUNNER_TEMP/irfaali-unit-tests.log"
+          RESULT="$RUNNER_TEMP/IrfaaliTests.xcresult"
+          rm -rf "$RESULT"
+          set +e
+          xcodebuild \
+            -project Irfaali.xcodeproj \
+            -scheme Irfaali \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -destination-timeout 120 \
+            -resultBundlePath "$RESULT" \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee "$LOG"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+
+          echo "===== TARGETED TEST FAILURE SUMMARY ====="
+          grep -nE "Test Case .* failed|XCTAssert|Assertion failed|error:|failed \(|Failing tests|TEST FAILED" "$LOG" | tail -n 250 || true
+
+          echo "===== XCRESULT SUMMARY ====="
+          if [ -d "$RESULT" ]; then
+            xcrun xcresulttool get test-results summary --path "$RESULT" --format json 2>&1 | tee "$RUNNER_TEMP/xcresult-summary.json" || true
+            xcrun xcresulttool get test-results tests --path "$RESULT" --format json 2>&1 | tee "$RUNNER_TEMP/xcresult-tests.json" || true
+          fi
+
+          echo "$STATUS" > "$RUNNER_TEMP/unit-test-exit-code.txt"
+          exit "$STATUS"
+
+      - name: Upload unit-test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: irfaali-unit-test-diagnostics-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/irfaali-unit-tests.log
+            ${{ runner.temp }}/xcresult-summary.json
+            ${{ runner.temp }}/xcresult-tests.json
+            ${{ runner.temp }}/unit-test-exit-code.txt
+            ${{ runner.temp }}/IrfaaliTests.xcresult
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Shutdown diagnostic simulator
+        if: always()
+        run: |
+          if [ -n "${SIMULATOR_UDID:-}" ]; then
+            xcrun simctl shutdown "$SIMULATOR_UDID" || true
+            xcrun simctl delete "$SIMULATOR_UDID" || true
+          fi
