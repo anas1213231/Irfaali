@@ -43,11 +43,22 @@ final class AppPreferencesTests: XCTestCase {
 
     func testAppearancePersists() {
         let preferences = AppPreferences(defaults: defaults)
-        preferences.appearance = .pureBlack
+        preferences.appearance = .light
 
         let reloaded = AppPreferences(defaults: defaults)
-        XCTAssertEqual(reloaded.appearance, .dark)
-        XCTAssertEqual(reloaded.preferredColorScheme, .dark)
+        XCTAssertEqual(reloaded.appearance, .light)
+        XCTAssertEqual(reloaded.preferredColorScheme, .light)
+    }
+
+    func testLegacyAppearanceMigratesToTwoThemeModel() {
+        defaults.set("pureBlack", forKey: "app.appearance")
+        XCTAssertEqual(AppPreferences(defaults: defaults).appearance, .dark)
+
+        defaults.set("pureWhite", forKey: "app.appearance")
+        XCTAssertEqual(AppPreferences(defaults: defaults).appearance, .light)
+
+        defaults.set("system", forKey: "app.appearance")
+        XCTAssertEqual(AppPreferences(defaults: defaults).appearance, .dark)
     }
 
     func testMotionAndHapticsStayEnabledWithoutUserSettings() {
