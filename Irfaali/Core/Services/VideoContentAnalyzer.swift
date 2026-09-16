@@ -28,7 +28,7 @@ struct VideoContentAnalyzer: Sendable {
             generator.requestedTimeToleranceBefore = CMTime(seconds: 0.12, preferredTimescale: 600)
             generator.requestedTimeToleranceAfter = CMTime(seconds: 0.12, preferredTimescale: 600)
 
-            let times = sampleTimes(duration: info.duration)
+            let times = Self.sampleTimes(duration: info.duration)
             var frames: [PixelFrame] = []
             frames.reserveCapacity(times.count)
 
@@ -44,15 +44,15 @@ struct VideoContentAnalyzer: Sendable {
 
             guard !frames.isEmpty else { throw AnalysisError.noFrames }
 
-            let averageLuminance = mean(frames.map(\.meanLuminance))
-            let luminanceDeviation = mean(frames.map(\.luminanceDeviation))
-            let highlights = mean(frames.map(\.highlightClippingRatio))
-            let shadows = mean(frames.map(\.shadowClippingRatio))
-            let sharpness = mean(frames.map(\.sharpnessScore))
-            let noise = mean(frames.map(\.noiseScore))
-            let compression = mean(frames.map(\.compressionArtifactScore))
-            let saturation = mean(frames.map(\.saturationScore))
-            let colorCast = mean(frames.map(\.colorCastScore))
+            let averageLuminance = Self.mean(frames.map(\.meanLuminance))
+            let luminanceDeviation = Self.mean(frames.map(\.luminanceDeviation))
+            let highlights = Self.mean(frames.map(\.highlightClippingRatio))
+            let shadows = Self.mean(frames.map(\.shadowClippingRatio))
+            let sharpness = Self.mean(frames.map(\.sharpnessScore))
+            let noise = Self.mean(frames.map(\.noiseScore))
+            let compression = Self.mean(frames.map(\.compressionArtifactScore))
+            let saturation = Self.mean(frames.map(\.saturationScore))
+            let colorCast = Self.mean(frames.map(\.colorCastScore))
 
             var motionSamples: [Double] = []
             var sceneChanges = 0
@@ -68,16 +68,16 @@ struct VideoContentAnalyzer: Sendable {
 
             return VideoAnalysisReport(
                 sampledFrameCount: frames.count,
-                averageLuminance: clamp01(averageLuminance),
-                luminanceDeviation: clamp01(luminanceDeviation),
-                highlightClippingRatio: clamp01(highlights),
-                shadowClippingRatio: clamp01(shadows),
-                sharpnessScore: clamp01(sharpness),
-                noiseScore: clamp01(noise),
-                compressionArtifactScore: clamp01(compression),
-                saturationScore: clamp01(saturation),
-                colorCastScore: clamp01(colorCast),
-                motionScore: clamp01(mean(motionSamples)),
+                averageLuminance: Self.clamp01(averageLuminance),
+                luminanceDeviation: Self.clamp01(luminanceDeviation),
+                highlightClippingRatio: Self.clamp01(highlights),
+                shadowClippingRatio: Self.clamp01(shadows),
+                sharpnessScore: Self.clamp01(sharpness),
+                noiseScore: Self.clamp01(noise),
+                compressionArtifactScore: Self.clamp01(compression),
+                saturationScore: Self.clamp01(saturation),
+                colorCastScore: Self.clamp01(colorCast),
+                motionScore: Self.clamp01(Self.mean(motionSamples)),
                 sceneChangeCount: sceneChanges
             )
         }.value
