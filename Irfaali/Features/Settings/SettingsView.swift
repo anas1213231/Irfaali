@@ -64,7 +64,7 @@ struct SettingsView: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text(preferences.text(ar: "نسخة التطبيق", en: "App version"))
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
 
                             Spacer()
 
@@ -89,7 +89,7 @@ struct SettingsView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
         .navigationTitle(preferences.text(ar: "الإعدادات", en: "Settings"))
         .navigationBarTitleDisplayMode(.large)
         .animation(preferences.animationsEnabled ? .easeInOut(duration: 0.15) : nil, value: preferences.language)
@@ -129,7 +129,7 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             Text(title)
                 .font(.body.weight(.medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             Spacer(minLength: 12)
 
@@ -143,7 +143,7 @@ struct SettingsView: View {
             if showsChevron {
                 Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.28))
+                    .foregroundStyle(.tertiary)
             }
         }
         .frame(minHeight: 52)
@@ -163,7 +163,7 @@ struct SettingsView: View {
 
                 Text(preferences.appearanceName(appearance))
                     .font(.body.weight(selected ? .semibold : .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -181,21 +181,15 @@ struct SettingsView: View {
     private func appearanceSwatch(for appearance: AppPreferences.Appearance) -> some View {
         let colors: [Color]
         switch appearance {
-        case .system:
-            colors = [.white, .black]
-        case .pureBlack:
-            colors = [.black, .black]
         case .dark:
             colors = [Color(white: 0.16), .black]
         case .light:
-            colors = [Color(white: 0.70), .white]
-        case .pureWhite:
-            colors = [.white, .white]
+            colors = [Color(white: 0.82), .white]
         }
 
         return Circle()
             .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(Circle().stroke(Color.white.opacity(0.16), lineWidth: 0.5))
+            .overlay(Circle().stroke(Color.primary.opacity(0.16), lineWidth: 0.5))
             .frame(width: 20, height: 20)
     }
 
