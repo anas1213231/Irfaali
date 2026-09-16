@@ -3,6 +3,11 @@ import Foundation
 
 /// Verifies that audio actually survives processing instead of relying only on
 /// the presence of an audio track in metadata.
+///
+/// The audit is intentionally bounded for performance: it validates encoded
+/// packets near the beginning and end of the track and uses the real track time
+/// range for duration evidence. Long videos are not rescanned end-to-end merely
+/// to prove audio preservation.
 struct AudioIntegrityAudit {
     enum AuditError: LocalizedError {
         case cannotReadAudio
@@ -20,6 +25,7 @@ struct AudioIntegrityAudit {
 
     struct Snapshot: Equatable, Sendable {
         let hasAudio: Bool
+        /// Number of packets inspected in the bounded verification windows.
         let sampleCount: Int
         let firstPresentationTime: Double?
         let lastPresentationTime: Double?
@@ -121,54 +127,101 @@ struct AudioIntegrityAudit {
                 return .noAudio
             }
 
-            let timeRange = try await track.load(.timeRange)
-            let reader = try AVAssetReader(asset: asset)
-            let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
-            output.alwaysCopiesSampleData = false
+            let trackRange = try await track.load(.timeRange)
+            let start = trackRange.start
+            let duration = trackRange.duration
+            let durationSeconds = duration.seconds
 
-            guard reader.canAdd(output) else { throw AuditError.cannotReadAudio }
-            reader.add(output)
-            guard reader.startReading() else { throw reader.error ?? AuditError.cannotReadAudio }
-            defer { reader.cancelReading() }
-
-            var sampleCount = 0
-            var firstPTS: Double?
-            var lastPTS: Double?
-            var lastEnd: Double?
-            var previousPTS = -Double.infinity
-
-            while let sample = output.copyNextSampleBuffer() {
-                try Task.checkCancellation()
-
-                let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-                guard pts.isFinite, pts >= previousPTS else {
-                    throw AuditError.invalidAudioTimestamps
-                }
-
-                let duration = CMSampleBufferGetDuration(sample).seconds
-                let safeDuration = duration.isFinite && duration > 0 ? duration : 0
-
-                if firstPTS == nil { firstPTS = pts }
-                lastPTS = pts
-                lastEnd = pts + safeDuration
-                previousPTS = pts
-                sampleCount += 1
+            guard durationSeconds.isFinite, durationSeconds > 0 else {
+                throw AuditError.cannotReadAudio
             }
 
-            guard reader.status == .completed else {
-                throw reader.error ?? AuditError.cannotReadAudio
+            let evidenceWindow = CMTime(seconds: min(1.0, durationSeconds), preferredTimescale: 48_000)
+            let startRange = CMTimeRange(start: start, duration: evidenceWindow)
+            let startEvidence = try inspectWindow(asset: asset, track: track, range: startRange)
+
+            let endEvidence: WindowEvidence
+            if durationSeconds <= 1.25 {
+                endEvidence = startEvidence
+            } else {
+                let trackEnd = CMTimeAdd(start, duration)
+                let tailStart = CMTimeSubtract(trackEnd, evidenceWindow)
+                endEvidence = try inspectWindow(
+                    asset: asset,
+                    track: track,
+                    range: CMTimeRange(start: tailStart, duration: evidenceWindow)
+                )
             }
 
             return Snapshot(
                 hasAudio: true,
-                sampleCount: sampleCount,
-                firstPresentationTime: firstPTS,
-                lastPresentationTime: lastPTS,
-                sampleEndTime: lastEnd,
-                trackStartTime: timeRange.start.seconds.isFinite ? timeRange.start.seconds : nil,
-                trackDuration: timeRange.duration.seconds.isFinite ? timeRange.duration.seconds : nil
+                sampleCount: startEvidence.sampleCount + (durationSeconds <= 1.25 ? 0 : endEvidence.sampleCount),
+                firstPresentationTime: startEvidence.firstPTS,
+                lastPresentationTime: endEvidence.lastPTS,
+                sampleEndTime: endEvidence.lastEnd,
+                trackStartTime: start.seconds.isFinite ? start.seconds : nil,
+                trackDuration: durationSeconds
             )
         }.value
+    }
+
+    private struct WindowEvidence {
+        let sampleCount: Int
+        let firstPTS: Double?
+        let lastPTS: Double?
+        let lastEnd: Double?
+    }
+
+    private static func inspectWindow(
+        asset: AVAsset,
+        track: AVAssetTrack,
+        range: CMTimeRange
+    ) throws -> WindowEvidence {
+        let reader = try AVAssetReader(asset: asset)
+        reader.timeRange = range
+
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+        output.alwaysCopiesSampleData = false
+
+        guard reader.canAdd(output) else { throw AuditError.cannotReadAudio }
+        reader.add(output)
+        guard reader.startReading() else { throw reader.error ?? AuditError.cannotReadAudio }
+        defer { reader.cancelReading() }
+
+        var count = 0
+        var firstPTS: Double?
+        var lastPTS: Double?
+        var lastEnd: Double?
+        var previousPTS = -Double.infinity
+
+        while let sample = output.copyNextSampleBuffer() {
+            try Task.checkCancellation()
+
+            let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
+            guard pts.isFinite, pts >= previousPTS else {
+                throw AuditError.invalidAudioTimestamps
+            }
+
+            let sampleDuration = CMSampleBufferGetDuration(sample).seconds
+            let safeDuration = sampleDuration.isFinite && sampleDuration > 0 ? sampleDuration : 0
+
+            if firstPTS == nil { firstPTS = pts }
+            lastPTS = pts
+            lastEnd = pts + safeDuration
+            previousPTS = pts
+            count += 1
+        }
+
+        guard reader.status == .completed else {
+            throw reader.error ?? AuditError.cannotReadAudio
+        }
+
+        return WindowEvidence(
+            sampleCount: count,
+            firstPTS: firstPTS,
+            lastPTS: lastPTS,
+            lastEnd: lastEnd
+        )
     }
 
     private static func delta(_ lhs: Double?, _ rhs: Double?) -> Double {
