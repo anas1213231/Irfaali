@@ -63,20 +63,20 @@ struct SettingsView: View {
                     settingsSection(title: preferences.text(ar: "الإصدار", en: "Version")) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(preferences.text(ar: "نسخة التطبيق", en: "App version"))
-                                .font(.body.weight(.medium))
+                                .font(IrfaaliTypography.bodyMedium)
                                 .foregroundStyle(.primary)
 
                             Spacer()
 
                             Text(versionText)
-                                .font(.subheadline.monospacedDigit().weight(.semibold))
+                                .font(IrfaaliTypography.metadataMonospaced)
                                 .foregroundStyle(.secondary)
                         }
                         .frame(minHeight: 48)
                     }
 
                     Text(AppBranding.copyright)
-                        .font(.caption2)
+                        .font(IrfaaliTypography.caption)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.top, 8)
@@ -113,7 +113,7 @@ struct SettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title.uppercased(with: preferences.locale))
-                .font(.caption2.weight(.semibold))
+                .font(IrfaaliTypography.captionStrong)
                 .tracking(preferences.isArabic ? 0.15 : 1.15)
                 .foregroundStyle(.tertiary)
 
@@ -128,21 +128,21 @@ struct SettingsView: View {
     ) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.body.weight(.medium))
+                .font(IrfaaliTypography.bodyMedium)
                 .foregroundStyle(.primary)
 
             Spacer(minLength: 12)
 
             if let value {
                 Text(value)
-                    .font(.subheadline.weight(.regular))
+                    .font(IrfaaliTypography.secondaryBody)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if showsChevron {
                 Image(systemName: preferences.isArabic ? "chevron.left" : "chevron.right")
-                    .font(.caption2.weight(.semibold))
+                    .font(IrfaaliTypography.captionStrong)
                     .foregroundStyle(.tertiary)
             }
         }
@@ -162,13 +162,13 @@ struct SettingsView: View {
                 appearanceSwatch(for: appearance)
 
                 Text(preferences.appearanceName(appearance))
-                    .font(.body.weight(selected ? .semibold : .medium))
+                    .font(selected ? IrfaaliTypography.bodyMedium : IrfaaliTypography.body)
                     .foregroundStyle(.primary)
 
                 Spacer()
 
                 Image(systemName: selected ? "checkmark" : "")
-                    .font(.subheadline.weight(.semibold))
+                    .font(IrfaaliTypography.captionStrong)
                     .foregroundStyle(selected ? IrfaaliVisual.electricCyan : Color.clear)
                     .frame(width: 18)
             }
