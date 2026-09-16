@@ -10,11 +10,8 @@ final class AppPreferences: ObservableObject {
     }
 
     enum Appearance: String, CaseIterable, Identifiable {
-        case system
-        case pureBlack
         case dark
         case light
-        case pureWhite
 
         var id: String { rawValue }
     }
@@ -47,9 +44,14 @@ final class AppPreferences: ObservableObject {
             language = Locale.current.language.languageCode?.identifier == "ar" ? .arabic : .english
         }
 
-        if let rawAppearance = defaults.string(forKey: Keys.appearance),
-           let savedAppearance = Appearance(rawValue: rawAppearance) {
-            appearance = (savedAppearance == .light || savedAppearance == .pureWhite) ? .light : .dark
+        if let rawAppearance = defaults.string(forKey: Keys.appearance) {
+            switch rawAppearance {
+            case Appearance.light.rawValue, "pureWhite":
+                appearance = .light
+            default:
+                // Migrate legacy system / pureBlack / dark values to the two-theme model.
+                appearance = .dark
+            }
         } else {
             appearance = .dark
         }
@@ -66,14 +68,7 @@ final class AppPreferences: ObservableObject {
     }
 
     var preferredColorScheme: ColorScheme? {
-        switch appearance {
-        case .system:
-            nil
-        case .pureBlack, .dark:
-            .dark
-        case .light, .pureWhite:
-            .light
-        }
+        appearance == .dark ? .dark : .light
     }
 
     func text(ar: String, en: String) -> String {
@@ -82,16 +77,10 @@ final class AppPreferences: ObservableObject {
 
     func appearanceName(_ value: Appearance) -> String {
         switch value {
-        case .system:
-            text(ar: "حسب الآيفون", en: "System")
-        case .pureBlack:
-            text(ar: "أسود فخم", en: "Pure Black")
         case .dark:
             text(ar: "داكن", en: "Dark")
         case .light:
             text(ar: "فاتح", en: "Light")
-        case .pureWhite:
-            text(ar: "أبيض نقي", en: "Pure White")
         }
     }
 
