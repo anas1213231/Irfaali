@@ -13,7 +13,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                StudioView()
+                StudioViewV2()
             }
             .opacity(selectedTab == .studio ? 1 : 0)
             .animation(
