@@ -24,7 +24,7 @@ final class VideoEncodingQualityPolicyTests: XCTestCase {
         )
 
         XCTAssertGreaterThanOrEqual(bitrate, 12_000_000)
-        XCTAssertLessThan(20_000_000)
+        XCTAssertLessThan(bitrate, 20_000_000)
     }
 
     func testHealthySourceBitrateIsNotNeedlesslyReduced() {
