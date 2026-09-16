@@ -18,7 +18,7 @@ struct AudioIntegrityAudit {
             case .cannotReadAudio:
                 return "The audio samples could not be read from the media file."
             case .invalidAudioTimestamps:
-                return "The audio track contains invalid or non-increasing timestamps."
+                return "The audio track contains invalid or decreasing timestamps."
             }
         }
     }
@@ -192,23 +192,28 @@ struct AudioIntegrityAudit {
         var firstPTS: Double?
         var lastPTS: Double?
         var lastEnd: Double?
-        var previousPTS = -Double.infinity
+        var previousPTS: CMTime?
 
         while let sample = output.copyNextSampleBuffer() {
             try Task.checkCancellation()
 
-            let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-            guard pts.isFinite, pts >= previousPTS else {
+            let presentationTime = CMSampleBufferGetPresentationTimeStamp(sample)
+            guard presentationTime.isValid, presentationTime.isNumeric else {
+                throw AuditError.invalidAudioTimestamps
+            }
+            if let previousPTS, CMTimeCompare(presentationTime, previousPTS) < 0 {
                 throw AuditError.invalidAudioTimestamps
             }
 
+            let pts = presentationTime.seconds
+            guard pts.isFinite else { throw AuditError.invalidAudioTimestamps }
             let sampleDuration = CMSampleBufferGetDuration(sample).seconds
             let safeDuration = sampleDuration.isFinite && sampleDuration > 0 ? sampleDuration : 0
 
             if firstPTS == nil { firstPTS = pts }
             lastPTS = pts
-            lastEnd = pts + safeDuration
-            previousPTS = pts
+            lastEnd = max(lastEnd ?? -Double.infinity, pts + safeDuration)
+            previousPTS = presentationTime
             count += 1
         }
 
