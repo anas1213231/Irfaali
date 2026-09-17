@@ -1,4 +1,5 @@
 @preconcurrency import AVFoundation
+import CoreGraphics
 import CoreVideo
 import Foundation
 
@@ -155,10 +156,16 @@ final class FrameGenerationService {
             }
             activeWriter = writer
 
+            // The optical-flow intermediate is part of the production image path,
+            // so it must use the same conservative quality budget as final delivery.
+            // This prevents a weaker intermediate encode from discarding motion/detail
+            // before the final geometry/codec stage gets a chance to preserve it.
             let requestedBitrate = Int(
-                min(
-                    max(estimatedBitrate.isFinite ? estimatedBitrate * 1.35 : 8_000_000, 2_000_000),
-                    160_000_000
+                VideoEncodingQualityPolicy.targetBitrate(
+                    size: CGSize(width: width, height: height),
+                    fps: plan.targetFPS,
+                    hevc: preferHEVC,
+                    sourceBitrate: estimatedBitrate.isFinite ? estimatedBitrate : 0
                 )
             )
 
@@ -232,33 +239,37 @@ final class FrameGenerationService {
 
                 if let previousBuffer, let previousPTS, let originPTS {
                     try autoreleasepool {
-                    let start = CMTimeSubtract(previousPTS, originPTS).seconds
-                    let end = CMTimeSubtract(currentPTS, originPTS).seconds
-                    let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
-                    let samples = plan.samples(from: start, to: end, nextIndex: &nextOutputIndex)
-                    var forward: CVPixelBuffer?
-                    var backward: CVPixelBuffer?
-                    for sample in samples {
-                        try Task.checkCancellation()
-                        let time = CMTime(seconds: sample.time, preferredTimescale: 60_000)
-                        if sample.fraction < 0.000001 {
-                            try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
-                            sourceFrameCount += 1
-                        } else if cut.isCut {
-                            try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
-                            sceneCutFallbackFrameCount += 1
-                        } else {
-                            if forward == nil {
-                                forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
-                                backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
+                        let start = CMTimeSubtract(previousPTS, originPTS).seconds
+                        let end = CMTimeSubtract(currentPTS, originPTS).seconds
+                        let cut = cutDetector.evaluate(previous: previousBuffer, current: currentBuffer)
+                        let samples = plan.samples(from: start, to: end, nextIndex: &nextOutputIndex)
+                        var forward: CVPixelBuffer?
+                        var backward: CVPixelBuffer?
+                        for sample in samples {
+                            try Task.checkCancellation()
+                            let time = CMTime(seconds: sample.time, preferredTimescale: 60_000)
+                            if sample.fraction < 0.000001 {
+                                try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
+                                sourceFrameCount += 1
+                            } else if cut.isCut {
+                                try append(previousBuffer, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
+                                sceneCutFallbackFrameCount += 1
+                            } else {
+                                if forward == nil {
+                                    forward = try opticalFlow.generateFlow(from: previousBuffer, to: currentBuffer, accuracy: .high)
+                                    backward = try opticalFlow.generateFlow(from: currentBuffer, to: previousBuffer, accuracy: .high)
+                                }
+                                let frame = try synthesizer.synthesize(
+                                    source: previousBuffer,
+                                    target: currentBuffer,
+                                    forwardFlow: forward!,
+                                    backwardFlow: backward!,
+                                    fraction: sample.fraction
+                                )
+                                try append(frame, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
+                                generatedFrameCount += 1
                             }
-                            let frame = try synthesizer.synthesize(source: previousBuffer, target: currentBuffer,
-                                forwardFlow: forward!, backwardFlow: backward!, fraction: sample.fraction)
-                            try append(frame, at: time, adaptor: adaptor, writerInput: writerInput, writer: writer)
-                            generatedFrameCount += 1
                         }
-                    }
-
                     }
                     let adjustedCurrent = CMTimeSubtract(currentPTS, originPTS)
                     let seconds = max(0, CMTimeGetSeconds(adjustedCurrent))
@@ -280,13 +291,26 @@ final class FrameGenerationService {
                 let start = CMTimeSubtract(previousPTS, originPTS).seconds
                 let end = max(start, durationSeconds - originPTS.seconds)
                 for sample in plan.samples(from: start, to: end, nextIndex: &nextOutputIndex) {
-                    try append(previousBuffer, at: CMTime(seconds: sample.time, preferredTimescale: 60_000),
-                        adaptor: adaptor, writerInput: writerInput, writer: writer)
-                    if sample.fraction < 0.000001 { sourceFrameCount += 1 }
-                    else { sceneCutFallbackFrameCount += 1 } // Hold the last image through its remaining duration.
+                    try append(
+                        previousBuffer,
+                        at: CMTime(seconds: sample.time, preferredTimescale: 60_000),
+                        adaptor: adaptor,
+                        writerInput: writerInput,
+                        writer: writer
+                    )
+                    if sample.fraction < 0.000001 {
+                        sourceFrameCount += 1
+                    } else {
+                        sceneCutFallbackFrameCount += 1
+                    }
                 }
             }
-            writer.endSession(atSourceTime: CMTime(seconds: durationSeconds - (originPTS?.seconds ?? 0), preferredTimescale: 60_000))
+            writer.endSession(
+                atSourceTime: CMTime(
+                    seconds: durationSeconds - (originPTS?.seconds ?? 0),
+                    preferredTimescale: 60_000
+                )
+            )
 
             writerInput.markAsFinished()
             try Task.checkCancellation()
@@ -421,9 +445,14 @@ final class FrameGenerationService {
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
-            ) else { throw GenerationError.cannotMuxAudio }
+            ) else {
+                throw GenerationError.cannotMuxAudio
+            }
             let audioRange = try await audioTrack.load(.timeRange)
-            let range = CMTimeRangeGetIntersection(audioRange, otherRange: CMTimeRange(start: .zero, duration: duration))
+            let range = CMTimeRangeGetIntersection(
+                audioRange,
+                otherRange: CMTimeRange(start: .zero, duration: duration)
+            )
             if range.duration.seconds > 0 {
                 try compositionAudioTrack.insertTimeRange(range, of: audioTrack, at: range.start)
             }
