@@ -17,6 +17,13 @@ enum AppErrorMessage {
             }
         case is FrameGenerationService.GenerationError:
             return "Motion processing could not finish. Try a shorter video or lower resolution."
+        case let error as OpticalFlowService.FlowError:
+            switch error {
+            case .thermalCritical:
+                return "Frame generation stopped because the device reached a critical thermal state. Let the device cool down and try again."
+            default:
+                return "Motion analysis could not finish. Try a shorter video or lower resolution."
+            }
         case is VideoEnhancementService.EnhancementError:
             return "Image adjustment could not finish. Try another video or reduce the adjustment settings."
         case is VideoExportService.ExportError:
