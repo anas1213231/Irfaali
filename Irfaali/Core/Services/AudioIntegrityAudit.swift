@@ -51,16 +51,51 @@ struct AudioIntegrityAudit {
         let durationDelta: Double
         let startDelta: Double
         let endDelta: Double
+        let avStartSyncDelta: Double?
+        let avEndSyncDelta: Double?
+
+        init(
+            source: Snapshot,
+            output: Snapshot,
+            durationDelta: Double,
+            startDelta: Double,
+            endDelta: Double,
+            avStartSyncDelta: Double? = nil,
+            avEndSyncDelta: Double? = nil
+        ) {
+            self.source = source
+            self.output = output
+            self.durationDelta = durationDelta
+            self.startDelta = startDelta
+            self.endDelta = endDelta
+            self.avStartSyncDelta = avStartSyncDelta
+            self.avEndSyncDelta = avEndSyncDelta
+        }
 
         var passed: Bool {
-            Self.mismatch(source: source, output: output) == nil
+            Self.mismatch(
+                source: source,
+                output: output,
+                avStartSyncDelta: avStartSyncDelta,
+                avEndSyncDelta: avEndSyncDelta
+            ) == nil
         }
 
         var mismatchReason: String? {
-            Self.mismatch(source: source, output: output)
+            Self.mismatch(
+                source: source,
+                output: output,
+                avStartSyncDelta: avStartSyncDelta,
+                avEndSyncDelta: avEndSyncDelta
+            )
         }
 
-        private static func mismatch(source: Snapshot, output: Snapshot) -> String? {
+        private static func mismatch(
+            source: Snapshot,
+            output: Snapshot,
+            avStartSyncDelta: Double?,
+            avEndSyncDelta: Double?
+        ) -> String? {
             guard source.hasAudio else { return nil }
             guard output.hasAudio else { return "The source audio track is missing from the output." }
             guard output.sampleCount > 0 else { return "The output audio track contains no decodable audio samples." }
@@ -77,9 +112,19 @@ struct AudioIntegrityAudit {
                 }
             }
 
-            if let sourceStart = source.firstPresentationTime,
-               let outputStart = output.firstPresentationTime,
-               abs(outputStart - sourceStart) > 0.25 {
+            // Preserve the source's intentional audio/video offset instead of
+            // assuming every valid file begins both tracks at absolute time zero.
+            // The thresholds match the integration-level A/V timing contract.
+            if let avStartSyncDelta {
+                if avStartSyncDelta > 0.05 {
+                    return String(
+                        format: "Audio/video start sync shifted by %.3fs.",
+                        avStartSyncDelta
+                    )
+                }
+            } else if let sourceStart = source.firstPresentationTime,
+                      let outputStart = output.firstPresentationTime,
+                      abs(outputStart - sourceStart) > 0.25 {
                 return String(
                     format: "Audio start timing shifted too much (source %.3fs, output %.3fs).",
                     sourceStart,
@@ -87,8 +132,15 @@ struct AudioIntegrityAudit {
                 )
             }
 
-            if let sourceEnd = source.sampleEndTime,
-               let outputEnd = output.sampleEndTime {
+            if let avEndSyncDelta {
+                if avEndSyncDelta > 0.08 {
+                    return String(
+                        format: "Audio/video end sync shifted by %.3fs.",
+                        avEndSyncDelta
+                    )
+                }
+            } else if let sourceEnd = source.sampleEndTime,
+                      let outputEnd = output.sampleEndTime {
                 let tolerance = max(0.30, abs(sourceEnd) * 0.02)
                 if abs(outputEnd - sourceEnd) > tolerance {
                     return String(
@@ -106,16 +158,22 @@ struct AudioIntegrityAudit {
     static func verify(sourceURL: URL, outputURL: URL) async throws -> Report {
         async let sourceSnapshot = inspect(url: sourceURL)
         async let outputSnapshot = inspect(url: outputURL)
+        async let sourceSync = inspectAVSyncOffsets(url: sourceURL)
+        async let outputSync = inspectAVSyncOffsets(url: outputURL)
 
         let source = try await sourceSnapshot
         let output = try await outputSnapshot
+        let sourceOffsets = try await sourceSync
+        let outputOffsets = try await outputSync
 
         return Report(
             source: source,
             output: output,
             durationDelta: delta(source.trackDuration, output.trackDuration),
             startDelta: delta(source.firstPresentationTime, output.firstPresentationTime),
-            endDelta: delta(source.sampleEndTime, output.sampleEndTime)
+            endDelta: delta(source.sampleEndTime, output.sampleEndTime),
+            avStartSyncDelta: optionalDelta(sourceOffsets.start, outputOffsets.start),
+            avEndSyncDelta: optionalDelta(sourceOffsets.end, outputOffsets.end)
         )
     }
 
@@ -171,6 +229,47 @@ struct AudioIntegrityAudit {
         let firstPTS: Double?
         let lastPTS: Double?
         let lastEnd: Double?
+    }
+
+    private struct AVSyncOffsets: Sendable {
+        let start: Double?
+        let end: Double?
+
+        static let unavailable = AVSyncOffsets(start: nil, end: nil)
+    }
+
+    private static func inspectAVSyncOffsets(url: URL) async throws -> AVSyncOffsets {
+        let asset = AVURLAsset(url: url)
+        async let audioTracks = asset.loadTracks(withMediaType: .audio)
+        async let videoTracks = asset.loadTracks(withMediaType: .video)
+
+        let audios = try await audioTracks
+        let videos = try await videoTracks
+        guard let audio = audios.first, let video = videos.first else {
+            return .unavailable
+        }
+
+        async let audioRangeValue = audio.load(.timeRange)
+        async let videoRangeValue = video.load(.timeRange)
+        let audioRange = try await audioRangeValue
+        let videoRange = try await videoRangeValue
+
+        let audioStart = audioRange.start.seconds
+        let videoStart = videoRange.start.seconds
+        let audioEnd = CMTimeRangeGetEnd(audioRange).seconds
+        let videoEnd = CMTimeRangeGetEnd(videoRange).seconds
+
+        guard audioStart.isFinite,
+              videoStart.isFinite,
+              audioEnd.isFinite,
+              videoEnd.isFinite else {
+            return .unavailable
+        }
+
+        return AVSyncOffsets(
+            start: audioStart - videoStart,
+            end: audioEnd - videoEnd
+        )
     }
 
     private static func inspectWindow(
@@ -233,6 +332,11 @@ struct AudioIntegrityAudit {
 
     private static func delta(_ lhs: Double?, _ rhs: Double?) -> Double {
         guard let lhs, let rhs else { return 0 }
+        return abs(lhs - rhs)
+    }
+
+    private static func optionalDelta(_ lhs: Double?, _ rhs: Double?) -> Double? {
+        guard let lhs, let rhs else { return nil }
         return abs(lhs - rhs)
     }
 }
