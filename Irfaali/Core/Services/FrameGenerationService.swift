@@ -17,6 +17,7 @@ final class FrameGenerationService {
         case missingImageBuffer
         case appendFailed
         case cannotMuxAudio
+        case thermalPressure(FrameGenerationReadiness.ThermalLevel)
 
         var errorDescription: String? {
             switch self {
@@ -44,6 +45,12 @@ final class FrameGenerationService {
                 return "تعذر إضافة فريم مولّد إلى الفيديو النهائي."
             case .cannotMuxAudio:
                 return "تم توليد الصورة، لكن تعذر إرجاع مسار الصوت للملف النهائي."
+            case .thermalPressure(.critical):
+                return "أوقف ارفعلي توليد الفريمات لأن حرارة الجهاز وصلت لمستوى حرج. خل الجهاز يبرد ثم جرّب مرة ثانية."
+            case .thermalPressure(.serious):
+                return "أوقف ارفعلي توليد الفريمات لأن الضغط الحراري استمر أثناء المعالجة. خل الجهاز يبرد ثم جرّب مرة ثانية."
+            case .thermalPressure:
+                return "أوقف ارفعلي توليد الفريمات لحماية الجهاز من الضغط الحراري."
             }
         }
     }
@@ -218,9 +225,23 @@ final class FrameGenerationService {
             var sourceFrameCount = 0
             var generatedFrameCount = 0
             var sceneCutFallbackFrameCount = 0
+            var thermalGuard = FrameGenerationReadiness.RuntimeThermalGuard()
+            var nextThermalCheckUptime = 0.0
 
             while let sample = readerOutput.copyNextSampleBuffer() {
                 try Task.checkCancellation()
+
+                let uptime = ProcessInfo.processInfo.systemUptime
+                if uptime >= nextThermalCheckUptime {
+                    let thermalLevel = FrameGenerationReadiness.currentThermalLevel()
+                    if case .stop(let level) = thermalGuard.evaluate(
+                        level: thermalLevel,
+                        uptime: uptime
+                    ) {
+                        throw GenerationError.thermalPressure(level)
+                    }
+                    nextThermalCheckUptime = uptime + 0.5
+                }
 
                 guard let currentBuffer = CMSampleBufferGetImageBuffer(sample) else {
                     reader.cancelReading()
