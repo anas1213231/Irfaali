@@ -71,6 +71,54 @@ final class AudioIntegrityAuditTests: XCTestCase {
         XCTAssertFalse(report.passed)
     }
 
+    func testPreservedAVSyncOffsetsPassWithinTolerance() {
+        let audio = snapshot(duration: 10, firstPTS: 0.12, end: 10.12, samples: 480)
+        let report = AudioIntegrityAudit.Report(
+            source: audio,
+            output: audio,
+            durationDelta: 0,
+            startDelta: 0,
+            endDelta: 0,
+            avStartSyncDelta: 0.049,
+            avEndSyncDelta: 0.079
+        )
+
+        XCTAssertTrue(report.passed)
+        XCTAssertNil(report.mismatchReason)
+    }
+
+    func testAVStartSyncShiftOver50MillisecondsFails() {
+        let audio = snapshot(duration: 10, firstPTS: 0.12, end: 10.12, samples: 480)
+        let report = AudioIntegrityAudit.Report(
+            source: audio,
+            output: audio,
+            durationDelta: 0,
+            startDelta: 0,
+            endDelta: 0,
+            avStartSyncDelta: 0.051,
+            avEndSyncDelta: 0
+        )
+
+        XCTAssertFalse(report.passed)
+        XCTAssertTrue(report.mismatchReason?.contains("start sync") == true)
+    }
+
+    func testAVEndSyncShiftOver80MillisecondsFails() {
+        let audio = snapshot(duration: 10, firstPTS: 0.12, end: 10.12, samples: 480)
+        let report = AudioIntegrityAudit.Report(
+            source: audio,
+            output: audio,
+            durationDelta: 0,
+            startDelta: 0,
+            endDelta: 0,
+            avStartSyncDelta: 0,
+            avEndSyncDelta: 0.081
+        )
+
+        XCTAssertFalse(report.passed)
+        XCTAssertTrue(report.mismatchReason?.contains("end sync") == true)
+    }
+
     private func snapshot(
         duration: Double,
         firstPTS: Double,
