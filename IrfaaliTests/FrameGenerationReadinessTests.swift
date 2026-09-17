@@ -56,6 +56,59 @@ final class FrameGenerationReadinessTests: XCTestCase {
         XCTAssertTrue(readiness.reasons.contains(.thermalCritical))
     }
 
+    func testRuntimeThermalGuardStopsCriticalImmediately() {
+        var guardState = FrameGenerationReadiness.RuntimeThermalGuard()
+
+        XCTAssertEqual(
+            guardState.evaluate(level: .critical, uptime: 100),
+            .stop(.critical)
+        )
+    }
+
+    func testRuntimeThermalGuardAllowsTransientSeriousPressure() {
+        var guardState = FrameGenerationReadiness.RuntimeThermalGuard()
+
+        XCTAssertEqual(
+            guardState.evaluate(level: .serious, uptime: 100),
+            .continueProcessing
+        )
+        XCTAssertEqual(
+            guardState.evaluate(
+                level: .serious,
+                uptime: 100 + FrameGenerationReadiness.RuntimeThermalGuard.seriousGracePeriod - 0.01
+            ),
+            .continueProcessing
+        )
+    }
+
+    func testRuntimeThermalGuardStopsPersistentSeriousPressure() {
+        var guardState = FrameGenerationReadiness.RuntimeThermalGuard()
+        _ = guardState.evaluate(level: .serious, uptime: 100)
+
+        XCTAssertEqual(
+            guardState.evaluate(
+                level: .serious,
+                uptime: 100 + FrameGenerationReadiness.RuntimeThermalGuard.seriousGracePeriod
+            ),
+            .stop(.serious)
+        )
+    }
+
+    func testRuntimeThermalGuardResetsAfterThermalRecovery() {
+        var guardState = FrameGenerationReadiness.RuntimeThermalGuard()
+        _ = guardState.evaluate(level: .serious, uptime: 100)
+        _ = guardState.evaluate(level: .fair, uptime: 103)
+
+        XCTAssertEqual(
+            guardState.evaluate(level: .serious, uptime: 106),
+            .continueProcessing
+        )
+        XCTAssertEqual(
+            guardState.evaluate(level: .serious, uptime: 109),
+            .continueProcessing
+        )
+    }
+
     func testMissingMetalBlocksGeneration() {
         let readiness = FrameGenerationReadiness.evaluate(
             plan: FrameGenerationPlan.make(sourceFPS: 30, targetFPS: 60),
@@ -117,6 +170,7 @@ final class FrameGenerationReadinessTests: XCTestCase {
         XCTAssertTrue(environment.isSimulator)
         XCTAssertFalse(environment.lowPowerModeEnabled)
         XCTAssertEqual(environment.thermalLevel, .nominal)
+        XCTAssertEqual(FrameGenerationReadiness.currentThermalLevel(), .nominal)
     }
     #endif
 }
