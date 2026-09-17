@@ -1,8 +1,7 @@
 name: Diagnose Unit Tests
 
 on:
-  push:
-    branches: ["feature/ci-unit-tests-fix-20260916"]
+  workflow_dispatch:
 
 concurrency:
   group: diagnose-unit-tests-${{ github.ref_name }}
@@ -45,8 +44,8 @@ jobs:
           ')
           DEVICE_TYPE_ID=$(xcrun simctl list devicetypes -j | python3 -c '
           import json, sys
-          data = json.load(sys.stdin)
-          iphones = [d for d in data.get("devicetypes", []) if str(d.get("name", "")).startswith("iPhone")]
+          data = json.load(sys.stdin).get("devicetypes", [])
+          iphones = [d for d in data if str(d.get("name", "")).startswith("iPhone")]
           if not iphones:
               raise SystemExit("No iPhone simulator device type found")
           chosen = next((d for d in iphones if d.get("name") == "iPhone 17 Pro"), iphones[0])
