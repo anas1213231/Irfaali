@@ -187,11 +187,42 @@ final class VideoExportService {
     ) async throws -> (asset: AVMutableComposition, videoComposition: AVMutableVideoComposition) {
         try Task.checkCancellation()
 
-        let duration = try await sourceAsset.load(.duration)
         let sourceVideoTracks = try await sourceAsset.loadTracks(withMediaType: .video)
         guard let sourceVideoTrack = sourceVideoTracks.first else {
             throw ExportError.missingVideoTrack
         }
+
+        let sourceVideoRange = try await sourceVideoTrack.load(.timeRange)
+        guard sourceVideoRange.start.isValid,
+              sourceVideoRange.start.isNumeric,
+              sourceVideoRange.duration.seconds.isFinite,
+              sourceVideoRange.duration.seconds > 0 else {
+            throw ExportError.cannotCreateCompositionTrack
+        }
+
+        let sourceAudioTracks = try await sourceAsset.loadTracks(withMediaType: .audio)
+        var audioEntries: [(track: AVAssetTrack, range: CMTimeRange)] = []
+        var earliestStart = sourceVideoRange.start
+
+        for sourceAudioTrack in sourceAudioTracks {
+            try Task.checkCancellation()
+            let audioRange = try await sourceAudioTrack.load(.timeRange)
+            guard audioRange.start.isValid,
+                  audioRange.start.isNumeric,
+                  audioRange.duration.seconds.isFinite,
+                  audioRange.duration.seconds > 0 else {
+                throw ExportError.cannotCreateCompositionTrack
+            }
+            audioEntries.append((sourceAudioTrack, audioRange))
+            if CMTimeCompare(audioRange.start, earliestStart) < 0 {
+                earliestStart = audioRange.start
+            }
+        }
+
+        let timelineShift = CMTimeCompare(earliestStart, .zero) < 0
+            ? CMTimeSubtract(.zero, earliestStart)
+            : CMTime.zero
+        let videoDestinationStart = CMTimeAdd(sourceVideoRange.start, timelineShift)
 
         let composition = AVMutableComposition()
         guard let compositionVideoTrack = composition.addMutableTrack(
@@ -202,23 +233,22 @@ final class VideoExportService {
         }
 
         try compositionVideoTrack.insertTimeRange(
-            CMTimeRange(start: .zero, duration: duration),
+            sourceVideoRange,
             of: sourceVideoTrack,
-            at: .zero
+            at: videoDestinationStart
         )
 
-        let sourceAudioTracks = try await sourceAsset.loadTracks(withMediaType: .audio)
-        for sourceAudioTrack in sourceAudioTracks {
+        for entry in audioEntries {
             try Task.checkCancellation()
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else { throw ExportError.cannotCreateCompositionTrack }
-            let audioRange = try await sourceAudioTrack.load(.timeRange)
-            let range = CMTimeRangeGetIntersection(audioRange, otherRange: CMTimeRange(start: .zero, duration: duration))
-            if range.duration.seconds > 0 {
-                try compositionAudioTrack.insertTimeRange(range, of: sourceAudioTrack, at: range.start)
-            }
+            try compositionAudioTrack.insertTimeRange(
+                entry.range,
+                of: entry.track,
+                at: CMTimeAdd(entry.range.start, timelineShift)
+            )
         }
 
         let naturalSize = try await sourceVideoTrack.load(.naturalSize)
@@ -242,10 +272,13 @@ final class VideoExportService {
         )
 
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack)
-        layerInstruction.setTransform(normalizedTransform, at: .zero)
+        layerInstruction.setTransform(normalizedTransform, at: videoDestinationStart)
 
         let instruction = AVMutableVideoCompositionInstruction()
-        instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
+        instruction.timeRange = CMTimeRange(
+            start: videoDestinationStart,
+            duration: sourceVideoRange.duration
+        )
         instruction.layerInstructions = [layerInstruction]
 
         let videoComposition = AVMutableVideoComposition()
