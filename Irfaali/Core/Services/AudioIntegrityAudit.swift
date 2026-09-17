@@ -1,11 +1,12 @@
 @preconcurrency import AVFoundation
+import AudioToolbox
 import Foundation
 
 /// Verifies that audio actually survives processing instead of relying only on
 /// the presence of an audio track in metadata.
 ///
-/// The audit is intentionally bounded for performance: it validates encoded
-/// packets near the beginning and end of the track and uses the real track time
+/// The audit is intentionally bounded for performance: it validates decoded
+/// samples near the beginning and end of the track and uses the real track time
 /// range for duration evidence. Long videos are not rescanned end-to-end merely
 /// to prove audio preservation.
 struct AudioIntegrityAudit {
@@ -25,7 +26,7 @@ struct AudioIntegrityAudit {
 
     struct Snapshot: Equatable, Sendable {
         let hasAudio: Bool
-        /// Number of packets inspected in the bounded verification windows.
+        /// Number of samples inspected in the bounded verification windows.
         let sampleCount: Int
         let firstPresentationTime: Double?
         let lastPresentationTime: Double?
@@ -62,7 +63,7 @@ struct AudioIntegrityAudit {
         private static func mismatch(source: Snapshot, output: Snapshot) -> String? {
             guard source.hasAudio else { return nil }
             guard output.hasAudio else { return "The source audio track is missing from the output." }
-            guard output.sampleCount > 0 else { return "The output audio track contains no encoded audio samples." }
+            guard output.sampleCount > 0 else { return "The output audio track contains no decodable audio samples." }
 
             if let sourceDuration = source.trackDuration,
                let outputDuration = output.trackDuration {
@@ -180,7 +181,10 @@ struct AudioIntegrityAudit {
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = range
 
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+        let outputSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM
+        ]
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
         output.alwaysCopiesSampleData = false
 
         guard reader.canAdd(output) else { throw AuditError.cannotReadAudio }
@@ -206,10 +210,9 @@ struct AudioIntegrityAudit {
             let sampleDuration = CMSampleBufferGetDuration(sample).seconds
             let safeDuration = sampleDuration.isFinite && sampleDuration > 0 ? sampleDuration : 0
 
-            // Encoded AAC packets may be surfaced with valid presentation times
-            // that are not strictly monotonic after export/priming. Packet order
-            // alone is not an audio-corruption signal, so validate every PTS and
-            // derive the real timing envelope from its extrema instead.
+            // Audit decoded PCM rather than compressed AAC packet metadata. This
+            // proves the audio is actually decodable while avoiding codec priming
+            // or packet reordering from producing false corruption failures.
             firstPTS = min(firstPTS ?? Double.infinity, pts)
             lastPTS = max(lastPTS ?? -Double.infinity, pts)
             lastEnd = max(lastEnd ?? -Double.infinity, pts + safeDuration)
