@@ -18,7 +18,7 @@ struct AudioIntegrityAudit {
             case .cannotReadAudio:
                 return "The audio samples could not be read from the media file."
             case .invalidAudioTimestamps:
-                return "The audio track contains invalid or decreasing timestamps."
+                return "The audio track contains invalid timestamps."
             }
         }
     }
@@ -192,7 +192,6 @@ struct AudioIntegrityAudit {
         var firstPTS: Double?
         var lastPTS: Double?
         var lastEnd: Double?
-        var previousPTS: CMTime?
 
         while let sample = output.copyNextSampleBuffer() {
             try Task.checkCancellation()
@@ -201,19 +200,19 @@ struct AudioIntegrityAudit {
             guard presentationTime.isValid, presentationTime.isNumeric else {
                 throw AuditError.invalidAudioTimestamps
             }
-            if let previousPTS, CMTimeCompare(presentationTime, previousPTS) < 0 {
-                throw AuditError.invalidAudioTimestamps
-            }
 
             let pts = presentationTime.seconds
             guard pts.isFinite else { throw AuditError.invalidAudioTimestamps }
             let sampleDuration = CMSampleBufferGetDuration(sample).seconds
             let safeDuration = sampleDuration.isFinite && sampleDuration > 0 ? sampleDuration : 0
 
-            if firstPTS == nil { firstPTS = pts }
-            lastPTS = pts
+            // Encoded AAC packets may be surfaced with valid presentation times
+            // that are not strictly monotonic after export/priming. Packet order
+            // alone is not an audio-corruption signal, so validate every PTS and
+            // derive the real timing envelope from its extrema instead.
+            firstPTS = min(firstPTS ?? Double.infinity, pts)
+            lastPTS = max(lastPTS ?? -Double.infinity, pts)
             lastEnd = max(lastEnd ?? -Double.infinity, pts + safeDuration)
-            previousPTS = presentationTime
             count += 1
         }
 
