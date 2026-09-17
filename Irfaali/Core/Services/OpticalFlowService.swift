@@ -7,6 +7,7 @@ struct OpticalFlowService {
         case mismatchedDimensions
         case noFlowResult
         case unsupportedFlowFormat(OSType)
+        case thermalCritical
 
         var errorDescription: String? {
             switch self {
@@ -16,6 +17,8 @@ struct OpticalFlowService {
                 return "Vision did not return an optical-flow buffer."
             case .unsupportedFlowFormat(let format):
                 return "Vision returned an unsupported optical-flow pixel format: \(format)."
+            case .thermalCritical:
+                return "أوقفنا توليد الفريمات لأن حرارة الجهاز وصلت لمستوى حرج. بعد ما يبرد الجهاز، أعد المحاولة."
             }
         }
     }
@@ -34,6 +37,12 @@ struct OpticalFlowService {
               CVPixelBufferGetHeight(source) == CVPixelBufferGetHeight(target) else {
             throw FlowError.mismatchedDimensions
         }
+
+        #if !targetEnvironment(simulator)
+        if ProcessInfo.processInfo.thermalState == .critical {
+            throw FlowError.thermalCritical
+        }
+        #endif
 
         let request = VNGenerateOpticalFlowRequest(
             targetedCVPixelBuffer: target,
