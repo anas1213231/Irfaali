@@ -54,6 +54,9 @@ final class MotionWarpFrameSynthesizer {
     private let pipeline: MTLComputePipelineState
     private let ciContext: CIContext
     private var textureCache: CVMetalTextureCache!
+    private var bgraPool: CVPixelBufferPool?
+    private var bgraPoolWidth = 0
+    private var bgraPoolHeight = 0
 
     init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -185,24 +188,43 @@ final class MotionWarpFrameSynthesizer {
     }
 
     private func makeBGRAPixelBuffer(width: Int, height: Int) throws -> CVPixelBuffer {
-        let attributes: [CFString: Any] = [
-            kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey: width,
-            kCVPixelBufferHeightKey: height,
-            kCVPixelBufferMetalCompatibilityKey: true,
-            kCVPixelBufferIOSurfacePropertiesKey: [:] as CFDictionary
-        ]
+        let pool: CVPixelBufferPool
+        if let existing = bgraPool,
+           bgraPoolWidth == width,
+           bgraPoolHeight == height {
+            pool = existing
+        } else {
+            let attributes: [CFString: Any] = [
+                kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey: width,
+                kCVPixelBufferHeightKey: height,
+                kCVPixelBufferMetalCompatibilityKey: true,
+                kCVPixelBufferIOSurfacePropertiesKey: [:] as CFDictionary
+            ]
+
+            var createdPool: CVPixelBufferPool?
+            let poolStatus = CVPixelBufferPoolCreate(
+                kCFAllocatorDefault,
+                nil,
+                attributes as CFDictionary,
+                &createdPool
+            )
+            guard poolStatus == kCVReturnSuccess, let createdPool else {
+                throw SynthesisError.cannotCreatePixelBuffer
+            }
+
+            bgraPool = createdPool
+            bgraPoolWidth = width
+            bgraPoolHeight = height
+            pool = createdPool
+        }
 
         var pixelBuffer: CVPixelBuffer?
-        let status = CVPixelBufferCreate(
+        let status = CVPixelBufferPoolCreatePixelBuffer(
             kCFAllocatorDefault,
-            width,
-            height,
-            kCVPixelFormatType_32BGRA,
-            attributes as CFDictionary,
+            pool,
             &pixelBuffer
         )
-
         guard status == kCVReturnSuccess, let pixelBuffer else {
             throw SynthesisError.cannotCreatePixelBuffer
         }
