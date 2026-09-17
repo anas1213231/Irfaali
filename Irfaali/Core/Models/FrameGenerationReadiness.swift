@@ -67,9 +67,42 @@ struct FrameGenerationReadiness: Equatable, Sendable {
                 metalAvailable: MTLCreateSystemDefaultDevice() != nil,
                 isSimulator: false,
                 lowPowerModeEnabled: processInfo.isLowPowerModeEnabled,
-                thermalLevel: ThermalLevel(processInfo.thermalState)
+                thermalLevel: FrameGenerationReadiness.currentThermalLevel()
             )
             #endif
+        }
+    }
+
+    /// Runtime guard for sustained frame generation. A critical state stops
+    /// immediately; a serious state must persist long enough to prove it is not
+    /// a transient spike. The guard never lowers FPS, bitrate, or optical-flow
+    /// quality as a hidden thermal workaround.
+    struct RuntimeThermalGuard: Equatable, Sendable {
+        enum Action: Equatable, Sendable {
+            case continueProcessing
+            case stop(ThermalLevel)
+        }
+
+        static let seriousGracePeriod: TimeInterval = 5
+        private(set) var seriousStartedAt: TimeInterval?
+
+        mutating func evaluate(level: ThermalLevel, uptime: TimeInterval) -> Action {
+            switch level {
+            case .critical:
+                return .stop(.critical)
+            case .serious:
+                if let seriousStartedAt {
+                    if uptime - seriousStartedAt >= Self.seriousGracePeriod {
+                        return .stop(.serious)
+                    }
+                } else {
+                    seriousStartedAt = uptime
+                }
+                return .continueProcessing
+            case .nominal, .fair:
+                seriousStartedAt = nil
+                return .continueProcessing
+            }
         }
     }
 
@@ -77,6 +110,14 @@ struct FrameGenerationReadiness: Equatable, Sendable {
     let reasons: [Reason]
 
     var canStart: Bool { level != .blocked }
+
+    static func currentThermalLevel() -> ThermalLevel {
+        #if targetEnvironment(simulator)
+        return .nominal
+        #else
+        return ThermalLevel(ProcessInfo.processInfo.thermalState)
+        #endif
+    }
 
     static func evaluate(
         plan: FrameGenerationPlan?,
