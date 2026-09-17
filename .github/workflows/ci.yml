@@ -112,22 +112,31 @@ jobs:
 
       - name: Run unit tests
         timeout-minutes: 8
+        shell: bash
         run: |
-          set -o pipefail
+          set -uo pipefail
           rm -rf "$RUNNER_TEMP/IrfaaliTests.xcresult"
+          TEST_LOG="$RUNNER_TEMP/IrfaaliTests.log"
+          rm -f "$TEST_LOG"
+          set +e
           xcodebuild -project Irfaali.xcodeproj -scheme Irfaali -sdk iphonesimulator \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" -destination-timeout 120 \
             -derivedDataPath "$RUNNER_TEMP/IrfaaliTestData" \
             -resultBundlePath "$RUNNER_TEMP/IrfaaliTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -enableCodeCoverage NO \
-            test-without-building
+            test-without-building 2>&1 | tee "$TEST_LOG"
+          TEST_STATUS=${PIPESTATUS[0]}
+          set -e
+          exit "$TEST_STATUS"
 
-      - name: Upload test result bundle on failure
+      - name: Upload test diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: IrfaaliTests-xcresult-${{ github.sha }}
-          path: ${{ runner.temp }}/IrfaaliTests.xcresult
+          name: IrfaaliTests-diagnostics-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/IrfaaliTests.xcresult
+            ${{ runner.temp }}/IrfaaliTests.log
           if-no-files-found: ignore
           retention-days: 7
 
