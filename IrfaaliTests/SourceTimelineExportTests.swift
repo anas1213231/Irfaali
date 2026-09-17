@@ -194,11 +194,36 @@ final class SourceTimelineExportTests: XCTestCase {
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
         let video = try XCTUnwrap(videoTracks.first)
         let audio = try XCTUnwrap(audioTracks.first)
-        let videoRange = try await video.load(.timeRange)
-        let audioRange = try await audio.load(.timeRange)
+        let videoRange = try await mediaRange(for: video)
+        let audioRange = try await mediaRange(for: audio)
         return (
             audioRange.start.seconds - videoRange.start.seconds,
             CMTimeRangeGetEnd(audioRange).seconds - CMTimeRangeGetEnd(videoRange).seconds
+        )
+    }
+
+    private func mediaRange(for track: AVAssetTrack) async throws -> CMTimeRange {
+        let segments = try await track.load(.segments).filter { !$0.isEmpty }
+        guard let first = segments.first else {
+            throw FixtureError.failed("Track has no non-empty media segments")
+        }
+
+        var start = first.timeMapping.target.start
+        var end = CMTimeRangeGetEnd(first.timeMapping.target)
+        for segment in segments.dropFirst() {
+            let range = segment.timeMapping.target
+            if CMTimeCompare(range.start, start) < 0 {
+                start = range.start
+            }
+            let candidateEnd = CMTimeRangeGetEnd(range)
+            if CMTimeCompare(candidateEnd, end) > 0 {
+                end = candidateEnd
+            }
+        }
+
+        return CMTimeRange(
+            start: start,
+            duration: CMTimeSubtract(end, start)
         )
     }
 
