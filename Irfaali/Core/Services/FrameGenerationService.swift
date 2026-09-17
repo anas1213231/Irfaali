@@ -116,8 +116,8 @@ final class FrameGenerationService {
             throw GenerationError.invalidVideoDimensions
         }
 
-        let duration = try await sourceAsset.load(.duration)
-        let durationSeconds = max(CMTimeGetSeconds(duration), 0.001)
+        let videoTimeRange = try await videoTrack.load(.timeRange)
+        let durationSeconds = max(CMTimeGetSeconds(videoTimeRange.duration), 0.001)
 
         let silentURL = try makeDestination(prefix: "irfaali-framegen-silent")
         let finalURL = try makeDestination(prefix: "irfaali-framegen")
@@ -281,7 +281,7 @@ final class FrameGenerationService {
 
             if let previousBuffer, let previousPTS, let originPTS {
                 let start = CMTimeSubtract(previousPTS, originPTS).seconds
-                let end = max(start, durationSeconds - originPTS.seconds)
+                let end = max(start, durationSeconds)
                 for sample in plan.samples(from: start, to: end, nextIndex: &nextOutputIndex) {
                     try append(previousBuffer, at: CMTime(seconds: sample.time, preferredTimescale: 60_000),
                         adaptor: adaptor, writerInput: writerInput, writer: writer)
@@ -289,7 +289,7 @@ final class FrameGenerationService {
                     else { sceneCutFallbackFrameCount += 1 } // Hold the last image through its remaining duration.
                 }
             }
-            writer.endSession(atSourceTime: CMTime(seconds: durationSeconds - (originPTS?.seconds ?? 0), preferredTimescale: 60_000))
+            writer.endSession(atSourceTime: CMTime(seconds: durationSeconds, preferredTimescale: 60_000))
 
             writerInput.markAsFinished()
             try Task.checkCancellation()
@@ -391,17 +391,44 @@ final class FrameGenerationService {
             throw GenerationError.missingVideoTrack
         }
 
-        let audioTracks = try await originalAsset.loadTracks(withMediaType: .audio)
-        if audioTracks.isEmpty {
-            try Task.checkCancellation()
-            try FileManager.default.moveItem(at: generatedVideoURL, to: destinationURL)
-            try Task.checkCancellation()
-            return destinationURL
+        let originalVideoTracks = try await originalAsset.loadTracks(withMediaType: .video)
+        guard let originalVideoTrack = originalVideoTracks.first else {
+            throw GenerationError.missingVideoTrack
         }
 
-        let generatedDuration = try await generatedAsset.load(.duration)
-        let originalDuration = try await originalAsset.load(.duration)
-        let duration = CMTimeCompare(generatedDuration, originalDuration) <= 0 ? generatedDuration : originalDuration
+        let generatedRange = try await generatedTrack.load(.timeRange)
+        let originalVideoRange = try await originalVideoTrack.load(.timeRange)
+        guard generatedRange.duration.seconds.isFinite, generatedRange.duration.seconds > 0 else {
+            throw GenerationError.cannotMuxAudio
+        }
+
+        let audioTracks = try await originalAsset.loadTracks(withMediaType: .audio)
+        var audioEntries: [(track: AVAssetTrack, range: CMTimeRange)] = []
+        var earliestStart = originalVideoRange.start
+
+        for audioTrack in audioTracks {
+            try Task.checkCancellation()
+            let audioRange = try await audioTrack.load(.timeRange)
+            guard audioRange.start.isValid,
+                  audioRange.start.isNumeric,
+                  audioRange.duration.seconds.isFinite,
+                  audioRange.duration.seconds > 0 else {
+                throw GenerationError.cannotMuxAudio
+            }
+            audioEntries.append((audioTrack, audioRange))
+            if CMTimeCompare(audioRange.start, earliestStart) < 0 {
+                earliestStart = audioRange.start
+            }
+        }
+
+        let timelineShift: CMTime
+        if earliestStart.isValid,
+           earliestStart.isNumeric,
+           CMTimeCompare(earliestStart, .zero) < 0 {
+            timelineShift = CMTimeSubtract(.zero, earliestStart)
+        } else {
+            timelineShift = .zero
+        }
 
         let composition = AVMutableComposition()
         guard let videoCompositionTrack = composition.addMutableTrack(
@@ -412,24 +439,24 @@ final class FrameGenerationService {
         }
 
         try videoCompositionTrack.insertTimeRange(
-            CMTimeRange(start: .zero, duration: duration),
+            generatedRange,
             of: generatedTrack,
-            at: .zero
+            at: CMTimeAdd(originalVideoRange.start, timelineShift)
         )
 
         videoCompositionTrack.preferredTransform = try await generatedTrack.load(.preferredTransform)
 
-        for audioTrack in audioTracks {
+        for entry in audioEntries {
             try Task.checkCancellation()
             guard let compositionAudioTrack = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else { throw GenerationError.cannotMuxAudio }
-            let audioRange = try await audioTrack.load(.timeRange)
-            let range = CMTimeRangeGetIntersection(audioRange, otherRange: CMTimeRange(start: .zero, duration: duration))
-            if range.duration.seconds > 0 {
-                try compositionAudioTrack.insertTimeRange(range, of: audioTrack, at: range.start)
-            }
+            try compositionAudioTrack.insertTimeRange(
+                entry.range,
+                of: entry.track,
+                at: CMTimeAdd(entry.range.start, timelineShift)
+            )
         }
 
         guard let exporter = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetPassthrough),
